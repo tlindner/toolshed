@@ -21,7 +21,7 @@ static char const *const helpMessage[] = {
 	"cecb from Toolshed " TOOLSHED_VERSION "\n",
 	"Syntax: cecb {[<opts>]} <sub command> {[<opts>]}\n",
 	"Usage:  Cassette BASIC File Tools Executive\n",
-	"        Works with WAV, CAS cand C10 files\n",
+	"        Works with WAV, CAS and C10 files\n",
 	"Options:\n",
 	"     -t <%>    = Set threshold to remove background noise (for WAV files).\n",
 	"     -f <n>    = Set FSK delineation frequency (for WAV files).\n",
@@ -46,7 +46,7 @@ struct cmdtbl
 static struct cmdtbl table[] = {
 	{cecbdir, "dir"},
 	{cecbfstat, "fstat"},
-	{os9dump, "dump"},
+	{cecbdump, "dump"},
 	{decblist, "list"},
 	{cecbbulkerase, "bulkerase"},
 	{cecbcopy, "copy"},

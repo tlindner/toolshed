@@ -9,7 +9,7 @@ CFLAGS	+= -I../../../include -Wall
 	$(AR) -r $@ $^
 	$(RANLIB) $@
 
-libtoolshed.a:	toolshed.o
+libtoolshed.a:	toolshed.o dump.o
 
 clean:
 	$(RM) *.o *.a

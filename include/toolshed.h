@@ -33,6 +33,25 @@ int TSMakeDirectory(char *p);
 error_code TSRBFFree(char *file, char *dname, u_int *month, u_int *day, u_int *year, u_int *bps, u_int *total_sectors, u_int *bytes_free, u_int *free_sectors, u_int *largest_free_block, u_int *sectors_per_cluster, u_int *largest_count, u_int *sector_count);
 error_code TSDECBFree(char *file, u_int *free_granules);
 
+enum dumpformat
+{
+	FMT_STANDARD,
+	FMT_ASMHEX,
+	FMT_ASMBIN,
+	FMT_C,
+};
+
+extern int displayASCII;
+extern int displayHeader;
+extern int displayLabel;
+extern u_int dumpchunk;
+
+void dump(u_char * buffer, u_int offset, size_t num_bytes, enum dumpformat format);
+void dumpDECB(u_char * buffer, size_t num_bytes, enum dumpformat format);
+void dump_line(u_char * buffer, u_int count, enum dumpformat format);
+void dump_header(enum dumpformat format);
+char *binary(char s);
+
 #ifdef __cplusplus
 }
 #endif

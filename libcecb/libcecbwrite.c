@@ -22,24 +22,24 @@ error_code _cecb_write(cecb_path_id path, void *buffer, unsigned int *size)
 
 	while (*size > 0)
 	{
-		if (path->length == 0xff)
+		if (path->block_length == 0xff)
 		{
 			ec = _cecb_write_block(path, path->block_type,
-					       path->data, path->length);
-			path->length = 0;
+					       path->data, path->block_length);
+			path->block_length = 0;
 			path->current_pointer = 0;
 
 			if (ec != 0)
 				break;
 		}
 
-		fill_bytes = MIN(0xff - path->length, *size);
+		fill_bytes = MIN(0xff - path->block_length, *size);
 
 		memcpy(&(path->data[path->current_pointer]),
 		       b + buffer_pointer, fill_bytes);
 		*size -= fill_bytes;
 		path->current_pointer += fill_bytes;
-		path->length += fill_bytes;
+		path->block_length += fill_bytes;
 		buffer_pointer += fill_bytes;
 	}
 

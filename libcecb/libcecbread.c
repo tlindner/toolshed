@@ -32,22 +32,25 @@ error_code _cecb_read(cecb_path_id path, void *buffer, u_int * size)
 	requested_bytes = *size;
 	*size = 0;
 
-	if ((path->eof_flag == 1) && (path->current_pointer == path->length))
+	if ((path->eof_flag == 1) && (path->current_pointer == path->block_length))
 		return EOS_EOF;
+
+	if ((path->eof_flag == 0) && (path->current_pointer == path->block_length))
+		ec = _cecb_read_next_block(path);
 
 	while (requested_bytes > 0)
 	{
 		if ((path->eof_flag == 1)
-		    && (path->current_pointer == path->length))
+		    && (path->current_pointer == path->block_length))
 			break;
 
-		/* Fufill request from buffer */
-		if (path->current_pointer < path->length)
+		/* Fulfill request from buffer */
+		if (path->current_pointer < path->block_length)
 		{
 			size_t copy_bytes;
 
 			copy_bytes =
-				MIN((path->length - path->current_pointer),
+				MIN((path->block_length - path->current_pointer),
 				    requested_bytes);
 
 			memcpy(b + (*size),
@@ -61,11 +64,9 @@ error_code _cecb_read(cecb_path_id path, void *buffer, u_int * size)
 		}
 
 		/* if buffer empty, get new block */
-		if (path->current_pointer == path->length)
+		if (path->current_pointer == path->block_length)
 		{
-			ec = _cecb_read_next_block(path, &(path->block_type),
-						   &(path->length),
-						   path->data);
+			ec = _cecb_read_next_block(path);
 			path->current_pointer = 0;
 
 			if (ec != 0)
@@ -112,25 +113,24 @@ error_code _cecb_readln(cecb_path_id path, void *buffer, u_int * size)
 	return ec;
 }
 
-error_code _cecb_read_next_dir_entry(cecb_path_id path,
-				     cecb_dir_entry * dir_entry)
+error_code _cecb_read_next_dir_entry(cecb_path_id path)
 {
 	error_code ec = 0;
-	unsigned char data[256];
-	unsigned char block_type, block_length;
+// 	unsigned char data[256], calc_crc;
+// 	unsigned char block_type, block_length;
 
 	while (ec == 0)
 	{
-		ec = _cecb_read_next_block(path, &block_type, &block_length,
-					   data);
+		ec = _cecb_read_next_block(path);
 
 		if ((ec == EOS_CRC) || (ec == 0))
 		{
-			if ((block_type == 0)
-			    && (block_length == sizeof(cecb_dir_entry)))
+			if ((path->block_type == 0)
+			    && (path->block_length == sizeof(cecb_dir_entry)))
 			{
-				memcpy(dir_entry, data,
+				memcpy(&(path->dir_entry), path->data,
 				       sizeof(cecb_dir_entry));
+				path->current_pointer = path->block_length;	
 				break;
 			}
 		}
@@ -153,13 +153,11 @@ error_code _cecb_ncpy_name(cecb_dir_entry e, u_char * name, size_t len)
 
 }
 
-error_code _cecb_read_next_block(cecb_path_id path, unsigned char *block_type,
-				 unsigned char *block_length,
-				 unsigned char *data)
+error_code _cecb_read_next_block(cecb_path_id path)
 {
 	error_code ec = 0;
 	unsigned char find_block;
-	unsigned char checksum, checksum_ck;
+// 	unsigned char checksum_ck;
 	int i;
 
 	find_block = 0;
@@ -176,27 +174,36 @@ error_code _cecb_read_next_block(cecb_path_id path, unsigned char *block_type,
 			return ec;
 
 		find_block |= (unsigned short) newbit;
-
-		//printf( "find_block: %4.4x, sample: %d\n", find_block, path->wav_current_sample );
 	}
 
-	ec = _cecb_read_bits(path, 8, block_type);
-	ec = _cecb_read_bits(path, 8, block_length);
-
-	checksum = *block_type + *block_length;
-
-	//printf( "\nLength: %d\n", *block_length );
-
-	for (i = 0; i < *block_length; i++)
+	if (path->tape_type == WAV)
 	{
-		ec = _cecb_read_bits(path, 8, &(data[i]));
-		checksum += data[i];
-		//printf( "c: %2.2x, i: %d\n", data[i], i );
+		path->wav_cb_start = path->wav_current_sample;
+	}
+	else
+	{
+		path->cas_cb_start_byte = path->cas_current_byte;
+		path->cas_cb_start_bit = path->cas_current_bit;
 	}
 
-	ec = _cecb_read_bits(path, 8, &checksum_ck);
+	ec = _cecb_read_bits(path, 8, &(path->block_type));
+	ec = _cecb_read_bits(path, 8, &(path->block_length));
 
-	if (checksum != checksum_ck)
+	path->calc_cksum = path->block_type + path->block_length;
+
+// 	fprintf( stderr, "Length: %d\n", path->block_length );
+
+	for (i = 0; i < path->block_length; i++)
+	{
+		ec = _cecb_read_bits(path, 8, &(path->data[i]));
+		path->calc_cksum += path->data[i];
+// 		fprintf( stderr, "c: %02x (%c), i: %d\n", path->data[i], isprint(path->data[i]) ? path->data[i] : '.', i );
+	}
+	
+	path->current_pointer = 0;
+	ec = _cecb_read_bits(path, 8, &(path->embed_cksum));
+
+	if (path->calc_cksum != path->embed_cksum)
 		ec = EOS_CRC;
 
 	return ec;

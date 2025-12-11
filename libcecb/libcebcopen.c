@@ -325,7 +325,7 @@ error_code _cecb_open(cecb_path_id * path, char *pathlist, int mode)
 
 	while (ec == 0)
 	{
-		ec = _cecb_read_next_dir_entry(*path, &((*path)->dir_entry));
+		ec = _cecb_read_next_dir_entry(*path);
 
 		if (ec == 0)
 		{
@@ -367,17 +367,17 @@ error_code _cecb_close(cecb_path_id path)
 	/* if data was written, write last data block and end block */
 	if ((path->mode & FAM_WRITE) == FAM_WRITE)
 	{
-		if (path->length > 0)
+		if (path->block_length > 0)
 		{
 			ec = _cecb_write_block(path, path->block_type,
-					       path->data, path->length);
-			path->length = 0;
+					       path->data, path->block_length);
+			path->block_length = 0;
 			path->current_pointer = 0;
 		}
 
 		path->block_type = 0xff;
 		ec = _cecb_write_block(path, path->block_type, path->data,
-				       path->length);
+				       path->block_length);
 
 		/* Write half second of silence */
 

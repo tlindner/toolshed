@@ -94,7 +94,7 @@ static int do_dir(char **argv, char *p)
 	error_code ec = 0;
 	cecb_path_id path;
 	char asciiflag;
-	cecb_dir_entry dir_entry;
+// 	cecb_dir_entry dir_entry;
 
 	ec = _cecb_open(&path, p, FAM_READ);
 
@@ -102,7 +102,7 @@ static int do_dir(char **argv, char *p)
 	{
 		while (ec == 0)
 		{
-			ec = _cecb_read_next_dir_entry(path, &dir_entry);
+			ec = _cecb_read_next_dir_entry(path);
 
 			if (ec == EOS_EOF)
 			{
@@ -121,7 +121,7 @@ static int do_dir(char **argv, char *p)
 			if (ec != 0)
 				break;
 
-			switch (dir_entry.ascii_flag)
+			switch (path->dir_entry.ascii_flag)
 			{
 			case 0x00:
 				asciiflag = 'B';
@@ -134,8 +134,8 @@ static int do_dir(char **argv, char *p)
 				break;
 			}
 
-			printf(" %8.8s %d %c\n", dir_entry.filename,
-			       dir_entry.file_type, asciiflag);
+			printf(" %8.8s %d %c\n", path->dir_entry.filename,
+			       path->dir_entry.file_type, asciiflag);
 		}
 
 		ec = _cecb_close(path);

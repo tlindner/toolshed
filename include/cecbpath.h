@@ -84,28 +84,33 @@ typedef enum { AUTO=0, ODD, EVEN } _wave_parity;
 
 typedef struct _cecb_path_id
 {
-	int				mode;					/* access mode */
-	_tape_type		tape_type;				/* true for WAV files, false for CAS files */
-	char			*imgfile;				/* pointer to image file */
+	int				mode;					/* Access mode */
+	_tape_type		tape_type;				/* True for WAV files, false for CAS files */
+	char			*imgfile;				/* Pointer to image file */
 	char			filename[8];			/* Filename requested */
 	cecb_dir_entry  dir_entry;
-	unsigned int	filepos;				/* file position */
+	unsigned int	filepos;				/* File position */
 	int				israw;					/* No file I/O possible, just get/set blocks */
 	long			play_at;				/* Sample or bit to begin reading */
+	unsigned char	block_type;				/* Current block type */
+	unsigned char	block_length;			/* Current block length */
 	unsigned char	data[256];				/* Current blocks data */
-	unsigned char	block_type;				/* The block type of held data */
+	unsigned char	embed_cksum;			/* Current checksum recorded in block */
+	unsigned char	calc_cksum;				/* Current calculated checksum */
 	int				current_pointer;		/* Current location in current block */
-	unsigned char	length;					/* Length of data in above block */
 	int				eof_flag;				/* End of file flag. Set when last block read */
 	long			cas_start_byte;			/* Byte where file starts */
 	unsigned char	cas_start_bit;			/* Bit where file starts.  Fist bit of block type. */
-	long			cas_current_byte;		/* byte position in CAS file */
-	unsigned char   cas_current_bit;		/* bit position in byte of CAS file */
-	unsigned char	cas_byte;				/* current byte read from file */
+	long			cas_current_byte;		/* Byte position in CAS file */
+	unsigned char   cas_current_bit;		/* Bit position in byte of CAS file */
+	unsigned char	cas_byte;				/* Current byte read from file */
+	long			cas_cb_start_byte;		/* Current block start byte */
+	unsigned char	cas_cb_start_bit;		/* Current block start bit */
 	unsigned int	wav_riff_size;
 	long			wav_data_start;			/* File position of start of data chunk */
 	int				wav_data_length;		/* Length of data chunk */
-	long			wav_total_samples;		/* Tot number of samples in data */
+	long			wav_cb_start;			/* Current block start sample */
+	long			wav_total_samples;		/* Total number of samples in data */
 	unsigned int	wav_sample_rate;		/* Sample rate of WAV file */
 	unsigned short	wav_bits_per_sample;	/* Bits per sample of WAV file */
 	double			wav_threshold;			/* Remove noise below this threshold */
@@ -136,9 +141,11 @@ error_code _cecb_readln(cecb_path_id path, void *buffer, u_int *size);
 error_code _cecb_gs_fd(cecb_path_id path, cecb_file_stat *stat);
 error_code _cecb_gs_eof(cecb_path_id path);
 error_code _cecb_gs_pos(cecb_path_id path, u_int *pos);
-error_code _cecb_read_next_dir_entry( cecb_path_id path, cecb_dir_entry *dir_entry );
+// error_code _cecb_read_next_dir_entry( cecb_path_id path, cecb_dir_entry *dir_entry );
+error_code _cecb_read_next_dir_entry( cecb_path_id path );
 error_code _cecb_ncpy_name(cecb_dir_entry e, u_char *name, size_t len);
-error_code _cecb_read_next_block( cecb_path_id path, unsigned char *block_type, unsigned char *block_length, unsigned char *data  );
+// error_code _cecb_read_next_block( cecb_path_id path, unsigned char *block_type, unsigned char *block_length, unsigned char *crc_calculated, unsigned char *data  );
+error_code _cecb_read_next_block( cecb_path_id path );
 error_code _cecb_read_bits( cecb_path_id path, int count, unsigned char *result );
 error_code _cecb_read_bits_wav( cecb_path_id path, int count, unsigned char *result );
 error_code _cecb_read_bits_cas( cecb_path_id path, int count, unsigned char *result );

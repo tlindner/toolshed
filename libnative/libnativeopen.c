@@ -91,6 +91,9 @@ error_code _native_create(native_path_id * path, char *pathlist, int mode,
 		nativeMode = "wb";
 	}
 
+	strncpy((*path)->pathlist, pathlist, sizeof((*path)->pathlist) - 1);
+	(*path)->pathlist[sizeof((*path)->pathlist) - 1] = '\0';
+
 	(*path)->fd = fopen(pathlist, nativeMode);
 
 	if ((*path)->fd == NULL)
@@ -174,6 +177,9 @@ error_code _native_open(native_path_id * path, char *pathlist, int mode)
 	{
 		nativeMode = "b";
 	}
+
+	strncpy((*path)->pathlist, pathlist, sizeof((*path)->pathlist) - 1);
+	(*path)->pathlist[sizeof((*path)->pathlist) - 1] = '\0';
 
 	(*path)->fd = fopen(pathlist, nativeMode);
 

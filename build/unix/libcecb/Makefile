@@ -1,3 +1,4 @@
+# Makefile for libcecb.a
 include ../rules.mak
 
 CFLAGS += -I../../../include -Wall -MMD -MP

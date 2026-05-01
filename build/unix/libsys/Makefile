@@ -1,15 +1,21 @@
 # Makefile for libsys.a
 include ../rules.mak
 
+CFLAGS += -I../../../include -Wall -MMD -MP
+
+SRCS = crc.c prsnam.c
+OBJS = $(SRCS:.c=.o)
+DEPS = $(OBJS:.o=.d)
+
 vpath %.c ../../../libsys
 
-CFLAGS	+= -I../../../include -Wall
+libsys.a: $(OBJS)
+	$(AR) rcs $@ $^
 
-%.a:
-	$(AR) -r $@ $^
-	$(RANLIB) $@
-
-libsys.a:	crc.o prsnam.o
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	$(RM) *.o *.a
+	$(RM) -f *.o *.a *.d
+
+-include $(DEPS)

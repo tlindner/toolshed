@@ -1,15 +1,21 @@
 # Makefile for libmisc.a
 include ../rules.mak
 
+CFLAGS += -I../../../include -Wall -MMD -MP
+
+SRCS = libmiscendian.c libmisccococonv.c libmiscqueue.c libmiscutil.c
+OBJS = $(SRCS:.c=.o)
+DEPS = $(OBJS:.o=.d)
+
 vpath %.c ../../../libmisc
 
-CFLAGS	+= -I../../../include -Wall
+libmisc.a: $(OBJS)
+	$(AR) rcs $@ $^
 
-%.a:
-	$(AR) -r $@ $^
-	$(RANLIB) $@
-
-libmisc.a:	libmiscendian.o libmisccococonv.o libmiscqueue.o libmiscutil.o
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	$(RM) *.o *.a
+	$(RM) -f *.o *.a *.d
+
+-include $(DEPS)

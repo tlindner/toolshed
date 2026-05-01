@@ -1,14 +1,23 @@
 # Makefile for libnative.a
 include ../rules.mak
 
+CFLAGS += -I../../../include -Wall -MMD -MP
+
+SRCS = libnativegs.c libnativedelete.c libnativeopen.c libnativeread.c libnativerename.c \
+	libnativeseek.c libnativess.c libnativeread.c libnativewrite.c libnativereadln.c \
+	libnativemakdir.c
+OBJS = $(SRCS:.c=.o)
+DEPS = $(OBJS:.o=.d)
+
 vpath %.c ../../../libnative
 
-CFLAGS	+= -I../../../include -Wall
+libnative.a: $(OBJS)
+	$(AR) rcs $@ $^
 
-%.a:
-	$(AR) -r $@ $^
-	$(RANLIB) $@
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-libnative.a:	libnativegs.o libnativedelete.o libnativeopen.o libnativeread.o libnativerename.o libnativeseek.o libnativess.o libnativeread.o libnativewrite.o libnativereadln.o libnativemakdir.o
 clean:
-	$(RM) *.o *.a
+	$(RM) -f *.o *.a *.d
+
+-include $(DEPS)

@@ -3,13 +3,26 @@ include ../rules.mak
 
 vpath %.c ../../../cecb ../../../os9
 
-CFLAGS	+= -I../../../include -Wall
-LDFLAGS	+= -L../libtoolshed -L../libcoco -L../libcecb -L../libnative -L../librbf -L../libdecb -L../libmisc -L../libsys -ltoolshed -lcoco -ldecb -lcecb -lnative -lrbf -lmisc -lsys -lm
+CFLAGS	+= -I../../../include -Wall -MMD -MP
 
-cecb$(SUFEXE):	cecbbulkerase.o cecbdir.o cecbfstat.o cecb_main.o cecbcopy.o cecbleader.o ../os9/os9dump.o ../decb/decblist.o \
-		../libtoolshed/libtoolshed.a ../libcoco/libcoco.a ../libcecb/libcecb.a ../libnative/libnative.a \
-		../librbf/librbf.a ../libdecb/libdecb.a ../libmisc/libmisc.a ../libsys/libsys.a 
-	$(CC) -o $@ $^ $(LDFLAGS)
+SRCS = cecbbulkerase.c cecbdir.c cecbfstat.c cecb_main.c cecbcopy.c cecbleader.c \
+	../os9/os9dump.c ../decb/decblist.c
+OBJS = $(SRCS:.c=.o)
+DEPS = $(OBJS:.o=.d)
+
+LIBDEPS = ../libtoolshed/libtoolshed.a ../libcoco/libcoco.a ../libnative/libnative.a \
+	../libcecb/libcecb.a ../librbf/librbf.a ../libdecb/libdecb.a ../libmisc/libmisc.a \
+	../libsys/libsys.a
+
+# Derive -L flags from the directory part of each entry in LIBDEPS
+LDFLAGS += $(patsubst %,-L%,$(dir $(LIBDEPS))) \
+           $(patsubst ../lib%/lib%.a,-l%,$(LIBDEPS)) \
+           -lm
+
+cecb$(SUFEXE): $(OBJS) $(LIBDEPS) 
+	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 
 clean:
-	$(RM) *.o cecb cecb.exe
+	$(RM) *.o *.d cecb cecb.exe
+
+-include $(DEPS)

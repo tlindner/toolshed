@@ -461,10 +461,22 @@ error_code TSCopyFile(char *srcfile, char *dstfile, int eolTranslate,
 		fdesc.group_id = owner / 65536;
 	}
 
-	_coco_ss_fd(destpath, &fdesc);
-
 	_coco_close(path);
+
+	/* Close the dest file before setting metadata. fclose() flushes
+	 * buffered writes and causes the OS to update mtime, which would
+	 * overwrite any utime() call made before it. Instead, close first,
+	 * then reopen briefly just to apply the metadata (mtime, perms). */
 	_coco_close(destpath);
+
+	{
+		coco_path_id metapath;
+		if (_coco_open(&metapath, dstfile, FAM_READ | FAM_WRITE) == 0)
+		{
+			_coco_ss_fd(metapath, &fdesc);
+			_coco_close(metapath);
+		}
+	}
 
 
 	return ec;

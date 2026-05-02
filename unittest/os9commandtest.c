@@ -8,6 +8,7 @@
 
 #include "tinytest.h"
 #include <toolshed.h>
+#include <utime.h>
 
 void test_os9_command_format()
 {
@@ -90,7 +91,45 @@ void test_os9_command_copy_metadata()
 // 	fprintf(stderr, "converted_native_fstat.fd_dat: %d %d %d %d %d\n", converted_native_fstat.fd_dat[0], converted_native_fstat.fd_dat[1],converted_native_fstat.fd_dat[2], converted_native_fstat.fd_dat[3], converted_native_fstat.fd_dat[4]);
 	
 	ASSERT_MEM_EQUALS(os9_fstat.fd_dat, converted_native_fstat.fd_dat, 5);
- 
+
+	/* Change the native file's mtime to a different fixed date:
+     * March 3, 1984 at 14:15 */
+    struct utimbuf native_utime;
+    struct tm native_tm;
+    memset(&native_tm, 0, sizeof(native_tm));
+    native_tm.tm_year = 84;  /* 1984 */
+    native_tm.tm_mon  = 2;   /* March */
+    native_tm.tm_mday = 3;
+    native_tm.tm_hour = 14;
+    native_tm.tm_min  = 15;
+    native_tm.tm_isdst = -1;
+    native_utime.modtime = mktime(&native_tm);
+    native_utime.actime  = native_utime.modtime;
+    ec = utime("meta_out.txt", &native_utime);
+    ASSERT_EQUALS(0, ec);
+
+    /* Copy native file back into the disk image */
+    ec = system("../os9/os9 copy meta_out.txt test.dsk,meta_back.txt > /dev/null 2>&1");
+    ASSERT_EQUALS(0, ec);
+
+    /* Read the OS9 file's modification time */
+    fd_stats os9_back_fstat;
+    ec = _os9_open(&os9path, "test.dsk,meta_back.txt", FAM_READ);
+    ASSERT_EQUALS(0, ec);
+    ec = _os9_gs_fd(os9path, os9_fstat_size, &os9_back_fstat);
+    ASSERT_EQUALS(0, ec);
+    ec = _os9_close(os9path);
+    ASSERT_EQUALS(0, ec);
+
+    /* Check that the OS9 file's mtime matches the native file's mtime */
+    fd_stats expected_back_fstat = {0};
+    UnixToOS9Time(native_utime.modtime, (char *) expected_back_fstat.fd_dat);
+
+// 	fprintf(stderr, "os9_back_fstat.fd_dat: %d %d %d %d %d\n", os9_back_fstat.fd_dat[0], os9_back_fstat.fd_dat[1],os9_back_fstat.fd_dat[2], os9_back_fstat.fd_dat[3], os9_back_fstat.fd_dat[4]);
+// 	fprintf(stderr, "expected_back_fstat.fd_dat: %d %d %d %d %d\n", expected_back_fstat.fd_dat[0], expected_back_fstat.fd_dat[1],expected_back_fstat.fd_dat[2], expected_back_fstat.fd_dat[3], expected_back_fstat.fd_dat[4]);
+
+    ASSERT_MEM_EQUALS(expected_back_fstat.fd_dat, os9_back_fstat.fd_dat, 5);
+
 	remove("meta_out.txt");
 }
 

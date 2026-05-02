@@ -344,6 +344,132 @@ void test_decb_token()
 	free(detokenize_buffer);
 }
 
+/* Test for issue #52: keywords embedded in variable-like identifiers should
+   be tokenized. e.g. "BTHEN" should produce a space, then 'B' byte, then the
+   THEN token (0xA7), not the literal string "BTHEN". The space is emitted into
+   the token stream so the output round-trips correctly through Color BASIC's
+   EDIT command. The same applies to other keywords: AND (0xB0), STEP (0xA9). */
+void test_decb_token_keyword_after_var()
+{
+	error_code ec;
+	unsigned char *source;
+	unsigned char *entokenize_buffer;
+	u_int entokenize_size;
+	int path_type = 0;
+
+	char *detokenize_buffer;
+	u_int detokenize_size;
+
+	/* --- BTHEN: should tokenize as B + space + THEN, round-trip to "B THEN" --- */
+	char *prog_bthen = "10 IF A = BTHEN 30\n";
+	char *prog_bthen_expected = "10 IF A = B THEN 30\n";
+	u_int len = strlen(prog_bthen);
+	source = malloc(len + 1);
+	strcpy((char *)source, prog_bthen);
+
+	ec = _decb_entoken(source, len, &entokenize_buffer, &entokenize_size, path_type);
+	ASSERT_EQUALS(0, ec);
+
+	/* Verify the THEN token byte (0xA7) is present */
+	int found_then = 0;
+	for (u_int i = 0; i < entokenize_size; i++)
+	{
+		if (entokenize_buffer[i] == 0xA7)
+		{
+			found_then = 1;
+			break;
+		}
+	}
+	ASSERT_EQUALS(1, found_then);
+
+	/* Verify 'B' (0x42) + space (0x20) + THEN token (0xA7) appear in sequence */
+	int b_space_then = 0;
+	for (u_int i = 0; i + 2 < entokenize_size; i++)
+	{
+		if (entokenize_buffer[i] == 0x42 &&
+		    entokenize_buffer[i + 1] == 0x20 &&
+		    entokenize_buffer[i + 2] == 0xA7)
+		{
+			b_space_then = 1;
+			break;
+		}
+	}
+	ASSERT_EQUALS(1, b_space_then);
+
+	/* Verify round-trip through detokenizer produces the spaced form */
+	ec = _decb_detoken(entokenize_buffer, entokenize_size,
+			   &detokenize_buffer, &detokenize_size);
+	ASSERT_EQUALS(0, ec);
+	detokenize_buffer[detokenize_size] = '\0';
+	ASSERT_STRING_EQUALS(prog_bthen_expected, detokenize_buffer);
+
+	free(source);
+	free(entokenize_buffer);
+	free(detokenize_buffer);
+
+	/* --- BAND: B followed by AND token (0xB0), round-trips to "B AND A" --- */
+	char *prog_band = "10 IF BAND A THEN 20\n";
+	char *prog_band_expected = "10 IF B AND A THEN 20\n";
+	len = strlen(prog_band);
+	source = malloc(len + 1);
+	strcpy((char *)source, prog_band);
+
+	ec = _decb_entoken(source, len, &entokenize_buffer, &entokenize_size, path_type);
+	ASSERT_EQUALS(0, ec);
+
+	int found_and = 0;
+	for (u_int i = 0; i < entokenize_size; i++)
+	{
+		if (entokenize_buffer[i] == 0xB0)
+		{
+			found_and = 1;
+			break;
+		}
+	}
+	ASSERT_EQUALS(1, found_and);
+
+	ec = _decb_detoken(entokenize_buffer, entokenize_size,
+			   &detokenize_buffer, &detokenize_size);
+	ASSERT_EQUALS(0, ec);
+	detokenize_buffer[detokenize_size] = '\0';
+	ASSERT_STRING_EQUALS(prog_band_expected, detokenize_buffer);
+
+	free(source);
+	free(entokenize_buffer);
+	free(detokenize_buffer);
+
+	/* --- XSTEP: X followed by STEP token (0xA9), round-trips to "X STEP" --- */
+	char *prog_xstep = "10 PRINT 10*XSTEP5\n";
+	char *prog_xstep_expected = "10 PRINT 10*X STEP5\n";
+	len = strlen(prog_xstep);
+	source = malloc(len + 1);
+	strcpy((char *)source, prog_xstep);
+
+	ec = _decb_entoken(source, len, &entokenize_buffer, &entokenize_size, path_type);
+	ASSERT_EQUALS(0, ec);
+
+	int found_step = 0;
+	for (u_int i = 0; i < entokenize_size; i++)
+	{
+		if (entokenize_buffer[i] == 0xA9)
+		{
+			found_step = 1;
+			break;
+		}
+	}
+	ASSERT_EQUALS(1, found_step);
+
+	ec = _decb_detoken(entokenize_buffer, entokenize_size,
+			   &detokenize_buffer, &detokenize_size);
+	ASSERT_EQUALS(0, ec);
+	detokenize_buffer[detokenize_size] = '\0';
+	ASSERT_STRING_EQUALS(prog_xstep_expected, detokenize_buffer);
+
+	free(source);
+	free(entokenize_buffer);
+	free(detokenize_buffer);
+}
+
 int main()
 {
 	remove("test.dsk");
@@ -356,6 +482,7 @@ int main()
 	RUN(test_decb_delete);
 	RUN(test_decb_rename);
 	RUN(test_decb_token);
+	RUN(test_decb_token_keyword_after_var);
 
 	return TEST_REPORT();
 }

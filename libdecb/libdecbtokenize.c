@@ -341,11 +341,14 @@ error_code _decb_entoken(unsigned char *in_buffer, int in_size,
 			i = 0x80;
 
 			/* Skip tokenization if we are in a literal state. */
-			if (quote_literal + data_literal + rem_literal +
-			    var_literal == 0)
+			/* Note: var_literal is handled specially - we still attempt keyword
+			   matching so that e.g. "BTHEN" tokenizes B as a variable followed
+			   by the THEN keyword, rather than treating "BTHEN" as a variable. 
+			   This is not the behavior of Color BASIC, this is an enhancement. */
+			if (quote_literal + data_literal + rem_literal == 0)
 			{
-				/* Check for PRINT abbreviation */
-				if (in_buffer[in_pos] == '?')
+				/* Check for PRINT abbreviation (only outside variable names) */
+				if (var_literal == 0 && in_buffer[in_pos] == '?')
 				{
 					(*out_buffer)[out_pos++] = 0x87;	/* PRINT token */
 					in_pos++;
@@ -362,6 +365,15 @@ error_code _decb_entoken(unsigned char *in_buffer, int in_size,
 						     &(in_buffer[in_pos]), in_size - in_pos) ==
 						    0)
 						{
+							if (var_literal)
+							{
+								/* Keyword found inside a variable name: end
+								   the variable and emit a space so the output
+								   round-trips correctly through EDIT. */
+								(*out_buffer)[out_pos++] = ' ';
+								var_literal = 0;
+							}
+
 							if (i == 3)	/* Preface ' with a colon */
 								(*out_buffer)
 									[out_pos++]
@@ -403,6 +415,15 @@ error_code _decb_entoken(unsigned char *in_buffer, int in_size,
 							       [in_pos]), in_size - in_pos) ==
 							    0)
 							{
+								if (var_literal)
+								{
+									/* Keyword found inside a variable name: end
+									   the variable and emit a space so the output
+									   round-trips correctly through EDIT. */
+									(*out_buffer)[out_pos++] = ' ';
+									var_literal = 0;
+								}
+
 								(*out_buffer)[out_pos++] = 0xff;	/* Function marker */
 								(*out_buffer)
 									[out_pos++]

@@ -1,16 +1,23 @@
 # Makefile for librbf.a
 include ../rules.mak
 
+CFLAGS += -I../../../include -Wall -MMD -MP
+
+SRCS = librbfbitmap.c librbfmakdir.c librbfread.c librbfrename.c librbfss.c \
+	librbfdelete.c librbfgs.c librbfopen.c librbfreadln.c librbfseek.c librbfwrite.c \
+	librbfformat.c
+OBJS = $(SRCS:.c=.o)
+DEPS = $(OBJS:.o=.d)
+
 vpath %.c ../../../librbf
 
-CFLAGS	+= -I../../../include -Wall
+librbf.a: $(OBJS)
+	$(AR) rcs $@ $^
 
-%.a:
-	$(AR) -r $@ $^
-	$(RANLIB) $@
-
-librbf.a:	librbfbitmap.o librbfmakdir.o librbfread.o librbfrename.o librbfss.o librbfdelete.o \
-		librbfgs.o librbfopen.o librbfreadln.o librbfseek.o librbfwrite.o librbfformat.o
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	$(RM) *.o *.a
+	$(RM) -f *.o *.a *.d
+
+-include $(DEPS)

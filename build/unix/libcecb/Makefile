@@ -1,17 +1,23 @@
 # Makefile for libcecb.a
 include ../rules.mak
 
+CFLAGS += -I../../../include -Wall -MMD -MP
+
+SRCS = libcecbbulkerase.c libcecbopen.c libcecbgs.c libcecbwav.c \
+	libcecbcas.c libcecbread.c libcecbwrite.c libcecbtokenize.c \
+	libcecbseek.c
+OBJS = $(SRCS:.c=.o)
+DEPS = $(OBJS:.o=.d)
+
 vpath %.c ../../../libcecb
 
-CFLAGS	+= -I../../../include -Wall
+libcecb.a: $(OBJS)
+	$(AR) rcs $@ $^
 
-%.a:
-	$(AR) -r $@ $^
-	$(RANLIB) $@
-
-libcecb.a:	libcecbbulkerase.o libcecbopen.o libcecbgs.o libcecbwav.o \
-                libcecbcas.o libcecbread.o libcecbwrite.o libcecbtokenize.o \
-                libcecbseek.o
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	$(RM) *.o *.a
+	$(RM) -f *.o *.a *.d
+
+-include $(DEPS)

@@ -93,6 +93,10 @@ error_code _coco_ss_fd(coco_path_id path, coco_file_stat * statbuf)
 #endif
 		native_stat.st_uid = statbuf->user_id;
 		native_stat.st_gid = statbuf->group_id;
+	/* Note: st_ctime (inode-change time) cannot be set by user-space
+	 * on POSIX systems -- the kernel updates it automatically.  Only
+	 * st_mtime (last-modified time) can be restored via utime()/utimes().
+	 * We propagate last_modified_time into st_mtime on all platforms. */
 #if defined(WIN32)
 		native_stat.st_ctime = statbuf->create_time;
 		native_stat.st_mtime = statbuf->last_modified_time;

@@ -170,12 +170,15 @@ error_code _coco_gs_fd(coco_path_id path, coco_file_stat * statbuf)
 		timepak.tm_year = os9_stat.fd_creat[0];
 		timepak.tm_mon = os9_stat.fd_creat[1] - 1;
 		timepak.tm_mday = os9_stat.fd_creat[2];
+		timepak.tm_isdst = -1; /* let mktime determine DST */
 		statbuf->create_time = mktime(&timepak);
+		memset(&timepak, 0, sizeof(timepak));
 		timepak.tm_year = os9_stat.fd_dat[0];
 		timepak.tm_mon = os9_stat.fd_dat[1] - 1;
 		timepak.tm_mday = os9_stat.fd_dat[2];
 		timepak.tm_hour = os9_stat.fd_dat[3];
 		timepak.tm_min = os9_stat.fd_dat[4];
+		timepak.tm_isdst = -1; /* let mktime determine DST */
 		statbuf->last_modified_time = mktime(&timepak);
 		break;
 

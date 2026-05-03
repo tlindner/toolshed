@@ -32,8 +32,12 @@ MAKEPACKAGE = zip -9
 else
 PACKAGENAME	= $(PACKAGENAME_UNIX)
 MAKEPACKAGE = tar czvf
+ifneq ($(NO_COCOFUSE),)
+DIRS		:= $(DIRS) unittest
+else
 DIRS		:= $(DIRS) cocofuse unittest
 APPS		:= $(APPS) cocofuse
+endif
 endif
 
 APPS		:= $(foreach item,$(APPS),$(item)/$(item)$(SUFEXE))

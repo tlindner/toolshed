@@ -3,12 +3,26 @@ include ../rules.mak
 
 vpath %.c ../../../decb ../../../os9
 
-CFLAGS	+= -I../../../include -Wall
-LDFLAGS	+= -L../libtoolshed -L../libcoco -L../libnative -L../libcecb -L../librbf -L../libdecb -L../libmisc -L../libsys -ltoolshed -lcoco -lnative -lcecb -lrbf -ldecb -lmisc -lsys -lm
+CFLAGS	+= -I../../../include -Wall -MMD -MP
 
-decb$(SUFEXE):	decb_main.o decbattr.o decbcopy.o decbdir.o decbdskini.o decbfree.o decbfstat.o \
-	decbhdbconv.o decbkill.o decblist.o decbrename.o os9dump.o decbdsave.o os9dsave.o
-	$(CC) -o $@ $^ $(LDFLAGS)
+SRCS = decb_main.c decbattr.c decbcopy.c decbdir.c decbdskini.c decbfree.c decbfstat.c \
+	decbhdbconv.c decbkill.c decblist.c decbrename.c os9dump.c decbdsave.c os9dsave.c
+OBJS = $(SRCS:.c=.o)
+DEPS = $(OBJS:.o=.d)
+
+LIBDEPS = ../libtoolshed/libtoolshed.a ../libcoco/libcoco.a ../libnative/libnative.a \
+	../libcecb/libcecb.a ../librbf/librbf.a ../libdecb/libdecb.a ../libmisc/libmisc.a \
+	../libsys/libsys.a
+
+# Derive -L flags from the directory part of each entry in LIBDEPS
+LDFLAGS += $(patsubst %,-L%,$(dir $(LIBDEPS))) \
+           $(patsubst ../lib%/lib%.a,-l%,$(LIBDEPS)) \
+           -lm
+
+decb$(SUFEXE): $(OBJS) $(LIBDEPS)
+	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 
 clean:
-	$(RM) *.o decb decb.exe
+	$(RM) *.o *.d decb decb.exe
+
+-include $(DEPS)

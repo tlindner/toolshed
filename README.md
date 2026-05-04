@@ -1,5 +1,7 @@
 # ToolShed
 
+Version 2.5
+
 ToolShed is a cornucopia of tools and source code for the Tandy Color Computer and Dragon micro.
 
 The repository contains:
@@ -13,6 +15,7 @@ The repository contains:
 **NOTE:** while the venerable 6809 cross-assembler, mamou, is part of the repository, it is only kept for historical value. Everyone should really be using William Astle's excellent LWTOOLS which contains the *lwasm* 6809 assembler and *lwlink* linker. [Download the latest version of the source here.](http://lwtools.projects.l-w.ca)
 
 Find the documentation for some of the command in Toolshed's [Wiki](https://github.com/nitros9project/toolshed/wiki)
+
 ## Building on Windows
 
 The recommended build environment is [MingW32 or MingW64](http://mingw.org/), [MSYS2](http://msys2.github.io/), or the [WSL subsystem for Windows 10+](https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux).
@@ -33,7 +36,7 @@ $ make -C build/unix install CC=gcc
 
 To build cocofuse you will need to have FUSE libraries and header files installed. On Debian-based systems:
 ```
-$ sudo apt-get install libfuse-dev
+$ sudo apt-get install libfuse-dev markdown
 ```
 
 Enter the unpackaged toolshed directory and run:
@@ -43,11 +46,21 @@ $ make -C build/unix install
 
 ## Building on macOS
 
-To build cocofuse for the Mac, you will need to have FUSE libraries and header files installed.
+Most tools are built with:
+
+$ make -C build/unix install
+
+To build the html documentation, you'll need markdown.
 
 The best way to do this is to first [visit the Homebrew page](https://brew.sh) and use the simple one-line ruby command to install Homebrew on your Mac.
 
-Currently the makefile for cocofuse requires fuse-t on macos. Historically we used to use macfuse, and osxfuse.
+```
+brew install markdown
+```
+
+To build cocofuse for the Mac, you will need to have FUSE libraries and header files installed.
+
+Currently the makefile for cocofuse requires fuse-t on macOS. Historically we used to use macfuse, and osxfuse.
 
 ```
 brew install fuse-t
@@ -72,6 +85,7 @@ It is highly recommended to have [LWTOOLS](http://lwtools.projects.l-w.ca/) inst
 
 To build all default flavors:
 ```
+$ make -C cocoroms
 $ make -C dwdos
 $ make -C hdbdos
 $ make -C superdos

@@ -28,6 +28,7 @@ static char const *const helpMessage[] = {
 	"     -b=size    size of copy buffer in bytes or K-bytes\n",
 	"     -l         perform end of line translation\n",
 	"     -o=id      set file's owner as id\n",
+	"     -a=attrs   set file attributes (same syntax as attr)\n",
 	"     -r         rewrite if file exists\n",
 	NULL
 };
@@ -45,6 +46,9 @@ int os9copy(int argc, char *argv[])
 	char df[256];
 	int owner = 0, owner_set = 0;
 	char *buffer;
+	int attrSetMask = 0;
+	int attrResetMask = 0;
+	int attr_set = 0;
 	u_int buffer_size = 32768;
 
 
@@ -97,6 +101,82 @@ int os9copy(int argc, char *argv[])
 						owner_set = 1;
 					}
 					p = q;
+					break;
+
+				case 'a':
+					if (*(++p) == '=')
+						p++;
+
+					attr_set = 1;
+
+					while (*p != '\0')
+					{
+						switch (*p)
+						{
+						case 'e':
+							attrSetMask |= FAP_EXEC;
+							break;
+						case 'w':
+							attrSetMask |= FAP_WRITE;
+							break;
+						case 'r':
+							attrSetMask |= FAP_READ;
+							break;
+						case 's':
+							attrSetMask |= FAP_SINGLE;
+							break;
+						case 'p':
+							switch (*(++p))
+							{
+							case 'e':
+								attrSetMask |= FAP_PEXEC;
+								break;
+							case 'w':
+								attrSetMask |= FAP_PWRITE;
+								break;
+							case 'r':
+								attrSetMask |= FAP_PREAD;
+								break;
+							}
+							break;
+						case 'n':
+							switch (*(++p))
+							{
+							case 'p':
+								switch (*(++p))
+								{
+								case 'e':
+									attrResetMask |= FAP_PEXEC;
+									break;
+								case 'w':
+									attrResetMask |= FAP_PWRITE;
+									break;
+								case 'r':
+									attrResetMask |= FAP_PREAD;
+									break;
+								}
+								break;
+							case 'e':
+								attrResetMask |= FAP_EXEC;
+								break;
+							case 'w':
+								attrResetMask |= FAP_WRITE;
+								break;
+							case 'r':
+								attrResetMask |= FAP_READ;
+								break;
+							case 's':
+								attrResetMask |= FAP_SINGLE;
+								break;
+							case 'd':
+								attrResetMask |= FAP_DIR;
+								break;
+							}
+							break;
+						}
+						p++;
+					}
+					p--;
 					break;
 
 				case 'h':
@@ -283,6 +363,24 @@ int os9copy(int argc, char *argv[])
 
 		ec = TSCopyFile(argv[j], df, eolTranslate, rewrite, owner,
 				owner_set, buffer, buffer_size);
+
+		if (ec == 0 && attr_set)
+		{
+			char attr;
+			char attrs[9];
+			error_code ec2;
+
+			ec2 = TSRBFAttrSet(df,
+					   attrSetMask,
+					   attrResetMask,
+					   &attr,
+					   attrs);
+
+			if (ec2 != 0)
+				fprintf(stderr,
+					"%s: warning: copied '%s' but could not set attributes: %s\n",
+					argv[0], df, TSReportError(ec2));
+		}
 
 		if (ec != 0)
 		{

@@ -304,12 +304,13 @@ Comparing two files of different size and content:
 This command will work on Disk BASIC and RBF disk image files as well as host files.
 
 #### Options
-<table>
-<tr><td>-b=size</td><td>size of copy buffer in bytes or K-bytes</td></tr>
-<tr><td>-l</td><td>perform end of line translation</td></tr>
-<tr><td>-o=id</td><td>set file's owner as id</td></tr>
-<tr><td>-r</td><td>rewrite if file exists</td></tr>
-</table>
+| Option        | Description |
+|---------------|-------------|
+| `-b=size`     | Set copy buffer size in bytes or kilobytes (e.g. `512`, `4K`) |
+| `-l`          | Enable end-of-line translation (use for text files only) |
+| `-o=id`       | Set file owner ID in the destination file descriptor |
+| `-r`          | Overwrite the destination file if it already exists |
+| `-a=erpepr`   | Set OS-9 file attributes using ERPEPR permission mask |
 
 #### Description
 
@@ -317,13 +318,15 @@ The copy command will create an exact copy of a file on either an RBF disk image
 
 The -l option performs end of line translation when copying between the host file system and the RBF disk image. You should only use the -l option on text files, not binary files. When copying files to a disk image, the user id of the user on the host system is set in the file's ID sector. If you want to override this, you can use the -o option, specifying the ID of the file's owner as it resides on the RBF disk image.
 
+The `-a=erpepr` option allows explicit control of OS-9 file attribute bits (ERPEPR), which define the file’s access permissions as stored in the file descriptor sector.
+
 #### Examples
 
 Copying a file from an RBF disk image to the host:
 
     os9 copy os9l2.dsk,cmds/procs procs
     Copying a file from the host to an RBF disk image:
-    os9 copy binary_file os9l2.dsk,binfile
+    os9 copy -a=epe binary_file os9l2.dsk,binfile
     Copying a text file from the host to an RBF disk image:
     os9 copy -l text_file os9l2.dsk,txtfile
 

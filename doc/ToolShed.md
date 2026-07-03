@@ -39,6 +39,7 @@ ToolShed v2.5.1
 * [decb](#decb) - Manipulate RSDOS formatted disk images
   * [Options](#decb_exec_option) - The DECB executive's option
   * [ATTR](#attr_decb) - Display or modify file attributes
+  * [BINBUST](#binbust) - Remove ambles from DECB binaries
   * [COPY](#copy_decb) - Copy one or more files to a target directory
   * [DIR](#dir_decb) - Display the directory of a Disk BASIC image
   * [DSAVE](#dsave_decb) - Copy the contents of a directory or device
@@ -852,6 +853,30 @@ Every file in the Disk BASIC file system possesses attributes. These attributes 
 Change a file's attribute to a text file:
 
     decb attr decb.dsk,TEST.DAT -3
+
+---
+
+<h3 id="binbust">BINBUST - Remove ambles from DECB binaries</h3>
+
+#### Syntax and Scope
+
+    binbust <input file> <output file>
+
+This command is for a file from anywhere.
+
+#### Options
+
+No options.
+
+#### Description
+
+DECB binary files are composed of one or more data records, each preceded by a 5-byte header (type, length, load address), followed by a final 5-byte execution record. Binbust removes these record headers and trailers, concatenating the data blocks into a single unadorned binary file.
+
+#### Examples
+
+Process a file:
+
+    decb binbust decb.dsk,EPROM.BIN dos.bin
 
 ---
 

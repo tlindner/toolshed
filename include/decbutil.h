@@ -46,6 +46,7 @@ int decbpadrom(int, char **);
 int decbrename(int, char **);
 int decbdump(int, char**);
 int decbdsave(int, char**);
+int decbbinbust(int, char **);
 
 #ifdef __cplusplus
 }

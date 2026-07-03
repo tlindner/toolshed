@@ -65,6 +65,7 @@ int decbrename(int, char **);
 int decbdump(int, char **);
 int decbhdbconv(int, char **);
 int decbdsave(int, char**);
+int decbbinbust(int, char**);
 
 /* Function prototypes for supported Disk BASIC commands are here */
 int cecbdir(int, char **);

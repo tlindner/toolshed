@@ -6,7 +6,9 @@ vpath %.c ../../../decb ../../../os9
 CFLAGS	+= -I../../../include -Wall -MMD -MP
 
 SRCS = decb_main.c decbattr.c decbcopy.c decbdir.c decbdskini.c decbfree.c decbfstat.c \
-	decbhdbconv.c decbkill.c decblist.c decbrename.c os9dump.c decbdsave.c os9dsave.c
+	decbhdbconv.c decbkill.c decblist.c decbrename.c os9dump.c decbdsave.c decbbinbust.c \
+	os9dsave.c
+	
 OBJS = $(SRCS:.c=.o)
 DEPS = $(OBJS:.o=.d)
 

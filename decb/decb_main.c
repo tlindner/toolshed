@@ -40,6 +40,7 @@ struct cmdtbl
 
 static struct cmdtbl table[] = {
 	{decbattr, "attr"},
+	{decbbinbust, "binbust"},
 	{decbcopy, "copy"},
 	{decbdir, "dir"},
 	{decbdsave, "dsave"},

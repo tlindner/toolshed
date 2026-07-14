@@ -100,6 +100,8 @@ typedef struct _cecb_path_id
 	long			play_at;				/* Sample or bit to begin reading */
 	unsigned char	data[256];				/* Current blocks data */
 	unsigned char	block_type;				/* The block type of held data */
+	unsigned char   block_cksum;			/* Block checksum encoded into the data stream */
+	unsigned char   block_cksum_calc;		/* Block checksum calculated from data */
 	int				current_pointer;		/* Current location in current block */
 	unsigned char	length;					/* Length of data in above block */
 	int				eof_flag;				/* End of file flag. Set when last block read */

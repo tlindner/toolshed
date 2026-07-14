@@ -93,7 +93,7 @@ git commit -m "Release 2.5"
 ## 4. Tag the Release
 
 ```
-git tag -a v2.5 -m "Toolshed 2.5"
+git tag -a v2.5 -m "ToolShed 2.5"
 ```
 
 Do NOT use old underscore format.
@@ -131,7 +131,10 @@ Example:
 Update:
 
 ```
-url "https://github.com/nitros9project/toolshed/archive/refs/tags/v2.5.tar.gz"
+curl -O "https://github.com/nitros9project/toolshed/archive/refs/tags/v2.5.tar.gz"
+curl -O "https://codeload.github.com/nitros9project/toolshed/archive/refs/tags/v2.5.1.tar.gz"
+curl -O "https://github.com/nitros9project/toolshed/archive/refs/tags/v2.5.1.tar.gz"
+curl -O "https://codeload.github.com/nitros9project/toolshed/tar.gz/refs/tags/v2.5.1"
 sha256 "<NEW_SHA256>"
 ```
 

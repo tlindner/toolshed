@@ -33,20 +33,49 @@ static void dump_hex(const unsigned char *data, size_t length)
 		size_t offset = i * 16;
 		size_t line_len = MIN(16, length - offset);
 
-		printf("  %04X: ", (unsigned int)offset);
+		printf("  %04x: ", (unsigned int)offset);
+		
 		for (j = 0; j < 16; j++)
 		{
 			if (j < line_len)
-				printf("%02X ", data[offset + j]);
+			{
+				unsigned char c = data[offset + j];
+				if (isprint(c))
+				{
+					// \033[32m turns text green, \033[0m resets it
+					printf("\033[32m%02x\033[0m ", c);
+				}
+				else
+				{
+					printf("%02x ", c);
+				}
+			}
 			else
+			{
 				printf("   ");
+			}
 			if (j == 7) printf(" ");
 		}
+		
 		printf(" |");
-		for (j = 0; j < line_len; j++)
+		
+		// 2. ASCII/Unicode preview column
+		for (j = 0; j < 16; j++)
 		{
-			unsigned char c = data[offset + j];
-			printf("%c", isprint(c) ? c : '.');
+			if (j < line_len)
+			{
+				unsigned char c = data[offset + j];
+				// Print readable character, or the Middle Dot (·) string literal if not printable
+				if (isprint(c))
+					printf("%c", c);
+				else
+					printf("%s", "·");
+			}
+			else
+			{
+				// Keep alignment perfect by padding missing bytes with a standard space
+				printf(" ");
+			}
 		}
 		printf("|\n");
 	}
@@ -123,13 +152,7 @@ int cecbdumpblock(int argc, char *argv[])
 			break;
 		}
 		
-		/* Handle CRC warnings gracefully (non-fatal for dump) */
-		if (ec == EOS_CRC)
-		{
-			printf("  [CRC Error in block]\n");
-			/* Continue scanning; block data may still be partially valid */
-		}
-		else if (ec != 0)
+		if (ec != 0)
 		{
 			fprintf(stderr, "  Read error: %d\n", ec);
 			break;
@@ -138,16 +161,33 @@ int cecbdumpblock(int argc, char *argv[])
 		/* Print block header with start position */
 		if (path->tape_type == WAV)
 		{
-			printf("Block: Type=0x%02X, Len=%d, End Sample=%ld\n",
-			       block_type, block_length, path->wav_current_sample);
+			printf("Block: Type=0x%02x, Len=%d",
+			       block_type, block_length);
 		}
 		else
 		{
 			/* CAS/C10: Calculate absolute bit position from byte/bit state */
-			printf("Block: Type=0x%02X, Len=%d, End Byte=%ld, End Bit=%d\n",
-			       block_type, block_length, path->cas_current_byte, path->cas_current_bit);
+			printf("Block: Type=0x%02x, Len=%d,",
+			       block_type, block_length);
 		}
 
+		/* Handle CRC warnings gracefully (non-fatal for dump) */
+		if (path->block_cksum != path->block_cksum_calc)
+		{
+			printf(", CKSUM Error=0x%02x ≠ 0x%02x", path->block_cksum, path->block_cksum_calc);
+		}
+		else
+			printf(", CKSUM=0x%02x", path->block_cksum);
+
+		if (path->tape_type == WAV)
+		{
+			printf(", End Sample=%ld\n", path->wav_current_sample);
+		}
+		else
+		{
+			printf(", End Byte=%ld, End Bit=%d\n", path->cas_current_byte, path->cas_current_bit);
+		}
+		
 		/* Print hex dump of block data */
 		dump_hex(data, block_length);
 		printf("\n");

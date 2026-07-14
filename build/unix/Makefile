@@ -40,8 +40,8 @@ APPS		:= $(APPS) cocofuse
 endif
 endif
 
+APPS_COMP   := $(foreach item,$(APPS),../../$(item)/_$(item))
 APPS		:= $(foreach item,$(APPS),$(item)/$(item)$(SUFEXE))
-
 all:
 	$(foreach dir, $(DIRS), (cd $(dir); $(MAKE));)
 
@@ -49,6 +49,17 @@ install: all
 	$(INSTALL) -d $(INSTALLDIR) $(DOCDIR)
 	$(INSTALL) $(APPS) $(INSTALLDIR)
 	$(INSTALL) -m 0644 doc/ToolShed.html $(DOCDIR)
+	
+# Install zsh compleation record
+	@if [ -d "/usr/local/share" ]; then \
+		mkdir -p "/usr/local/share/zsh/site-functions"; \
+		for app in $(APPS_COMP); do \
+			if [ -f "$$app" ]; then \
+				cp -f "$$app" "/usr/local/share/zsh/site-functions/"; \
+				echo "Installed Zsh completion from: $$app"; \
+			fi; \
+		done; \
+	fi
 
 package: INSTALLDIR=toolshed-$(VERSION)
 package: DOCDIR = $(INSTALLDIR)

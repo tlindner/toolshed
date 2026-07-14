@@ -1,0 +1,25 @@
+#compdef cecb
+
+# _cecb - Active Zsh completion script for cecb
+
+local -a subcommands
+local -a global_opts
+
+# 1. Define global flags
+global_opts=(
+    '(-h -?)'{-h,-?}'[Show help message]'
+    '-r[Set WAV file FSK aspect ratio]:ratio'
+    '-t[Set WAV file FSK aspect ratio threshold]:threshold'
+    '-n[Treat near zero as zero for WAV files]:zero adjust'
+    '-s[Start at sample/bit n]:sample/bit index'
+    '-z[Suggest MC10 mode]'
+)
+
+# 2. Actively query the cecb binary for its subcommands
+# _call_program is a safe Zsh built-in that executes commands in the user's PATH
+subcommands=(${(f)"$(_call_program cecb-commands cecb __complete 2>/dev/null)"})
+
+_arguments -C \
+    $global_opts \
+    '1:subcommand:compadd -a subcommands' \
+    '*:file:_files -g "*.(wav|WAV|cas|CAS|c10|C10|dsk|os9|DSK|OS9)"'

@@ -1,0 +1,21 @@
+#compdef os9
+
+# _os9 - Active Zsh completion script for os9
+
+local -a subcommands
+local -a global_opts
+
+# 1. Define global flags
+global_opts=(
+    '(-h -?)'{-h,-?}'[Show help message]'
+)
+
+# 2. Actively query the os9 binary for its subcommands
+# _call_program is a safe Zsh built-in that executes commands in the user's PATH
+subcommands=(${(f)"$(_call_program os9-commands os9 __complete 2>/dev/null)"})
+
+_arguments -C \
+    $global_opts \
+    '1:subcommand:compadd -a subcommands' \
+    '*:file:_files -g "*.(wav|WAV|cas|CAS|c10|C10|dsk|os9|DSK|OS9)"'
+

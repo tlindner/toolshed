@@ -66,6 +66,18 @@ int main(int argc, char *argv[])
 	int i;
 	char *p, *command = NULL;
 
+	/* --- Zsh ACTIVE COMPLETION HOOK --- */
+	if (argc > 1 && strcmp(argv[1], "__complete") == 0)
+	{
+		struct cmdtbl *ptr = table;
+		while (ptr->keyword != NULL)
+		{
+			printf("%s\n", ptr->keyword);
+			ptr++;
+		}
+		return 0;
+	}
+
 	/* walk command line for options */
 	for (i = 1; i < argc; i++)
 	{

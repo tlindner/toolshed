@@ -109,6 +109,7 @@ typedef struct _cecb_path_id
 	unsigned char	cas_start_bit;			/* Bit where file starts.  Fist bit of block type. */
 	long			cas_current_byte;		/* byte position in CAS file */
 	unsigned char   cas_current_bit;		/* bit position in byte of CAS file */
+	long            cas_total_bytes;        /* number of bytes in CAS file */
 	unsigned char	cas_byte;				/* current byte read from file */
 	unsigned int	wav_riff_size;
 	unsigned short	wav_audioFormat;		/* Format from WAV file */

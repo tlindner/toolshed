@@ -1183,9 +1183,9 @@ This command is intended for BASIC cassette and disk image files only.
 <table>
 <tr><td>-r[real]</td><td>Set WAV file FSK aspect ratio for autodetection. Default: 1.85</td></tr>
 <tr><td>-t[%]</td><td>Set WAV file FSK aspect ratio threshold. Default: 0.3 (30%)</td></tr>
-<tr><td>-n[%]</td><td>Treat near zero as zero (for WAV files). Default: 0.01 (1%)</td></tr>
-<tr><td>-s [n]</td><td>Start at sample/bit n in WAV/CAS/C10 file.</td></tr>
-<tr><td>-z</td><td>suggest MC10 mode.</td></tr>
+<tr><td>-n[%]</td><td>Set near-zero threshold for WAV samples. Default: 0.01 (1%)</td></tr>
+<tr><td>-s [n]</td><td>Start at sample/bit [n] in the input file.</td></tr>
+<tr><td>-z</td><td>Suggest MC-10 mode. Use MC-10 WAV files and MicroColor BASIC tokens.</td></tr>
 </table>
 % is a decimal number between 0 and 1.
 
@@ -1371,7 +1371,7 @@ The list command displays the contents of text files. It can list ASCII text fil
 
 ---
 
-<h3 id="copy_cecb">COPY - Copy one or more files to a target image</h3>
+<h3 id="copy_cecb">COPY - Copy one or more files the end of a target image</h3>
 
 #### Syntax and Scope
 
@@ -1380,18 +1380,25 @@ The list command displays the contents of text files. It can list ASCII text fil
 This command will work on Disk BASIC, RBF disk image files and Cassette image as well as host files.
 
 #### Options
+
 <table>
-<tr><td>-[0-3]</td><td>file type (when copying to a cassette or disk BASIC image)</td></tr>
+<tr><td>-[0-3]</td><td>file type (when copying to a Cassette BASIC image)</td></tr>
 <tr><td></td><td>0 = BASIC program</td></tr>
 <tr><td></td><td>1 = BASIC data file</td></tr>
 <tr><td></td><td>2 = machine-language program</td></tr>
 <tr><td></td><td>3 = text editor source file</td></tr>
 <tr><td>-[a|b]</td><td>data type (a = ASCII, b = binary)</td></tr>
-<tr><td>-l</td><td>perform end of line translation</td></tr>
-<tr><td>-r</td><td>rewrite if file exists</td></tr>
-<tr><td>-t</td><td>perform BASIC token translation</td></tr>
-<tr><td>-c</td><td>perform segment concatenation on machine language loadables</td></tr>
+<tr><td>-[g|n]</td><td>gap mode (g = gaps, n = no gaps)</td></tr>
+<tr><td>e[n]</td><td>execution address</td></tr>
+<tr><td>-l</td><td>translate line endings</td></tr>
+<tr><td>-t</td><td>entokenize BASIC ASCII text</td></tr>
+<tr><td>-k</td><td>detokenize BASIC program</td></tr>
+<tr><td>-s</td><td>encode as Motorola S-record</td></tr>
+<tr><td>-f</td><td>decode Motorola S-record</td></tr>
+<tr><td>-c</td><td>concatenate machine-language segments</td></tr>
+<tr><td>-p</td><td>honor global start position (may overwrite data)</td></tr>
 </table>
+
 #### Description
 
 The copy command will create an exact copy of a file on either a Disk BASIC disk image or on the host file system. The -l option performs end of line translation when copying between the host file system and the Disk BASIC disk image. You should only use the -l option on text files, not binary files. If a file already exists on the destination disk image or file system, an error will be returned. If you want to force the copy, use the -r option.
@@ -1404,7 +1411,7 @@ Copying a file from a Disk BASIC disk image to the host:
     Copying a BASIC file from the host to a Disk BASIC disk image with tokenization:
     cecb copy myprog.bas -t cecb.wav,MYPROG
     Copying a text file from the host to a cassette BASIC image:
-    cecb copy -l -3 -a file.txt cecb.wav,FILE
+    cecb copy -l3a file.txt cecb.wav,FILE
 
 ---
 

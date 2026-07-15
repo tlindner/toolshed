@@ -11,6 +11,14 @@
 #include <cocopath.h>
 #include <util.h>
 
+#ifdef _WIN32
+#include <io.h>
+#define is_stdout_terminal() _isatty(_fileno(stdout))
+#else
+#include <unistd.h>
+#define is_stdout_terminal() isatty(fileno(stdout))
+#endif
+
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
 
 /* Help message */
@@ -27,6 +35,7 @@ static void dump_hex(const unsigned char *data, size_t length)
 {
 	size_t i, j;
 	size_t lines = (length + 15) / 16;
+	int use_color = is_stdout_terminal();
 
 	for (i = 0; i < lines; i++)
 	{
@@ -40,9 +49,8 @@ static void dump_hex(const unsigned char *data, size_t length)
 			if (j < line_len)
 			{
 				unsigned char c = data[offset + j];
-				if (isprint(c))
+				if (use_color && isprint(c))
 				{
-					// \033[32m turns text green, \033[0m resets it
 					printf("\033[32m%02x\033[0m ", c);
 				}
 				else
@@ -58,14 +66,12 @@ static void dump_hex(const unsigned char *data, size_t length)
 		}
 		
 		printf(" |");
-		
-		// 2. ASCII/Unicode preview column
+
 		for (j = 0; j < 16; j++)
 		{
 			if (j < line_len)
 			{
 				unsigned char c = data[offset + j];
-				// Print readable character, or the Middle Dot (·) string literal if not printable
 				if (isprint(c))
 					printf("%c", c);
 				else
@@ -73,10 +79,10 @@ static void dump_hex(const unsigned char *data, size_t length)
 			}
 			else
 			{
-				// Keep alignment perfect by padding missing bytes with a standard space
 				printf(" ");
 			}
 		}
+
 		printf("|\n");
 	}
 }
@@ -89,6 +95,7 @@ int cecbdumpblock(int argc, char *argv[])
 	int i;
 	unsigned char block_type, block_length;
 	unsigned char data[256];
+	int use_color = is_stdout_terminal();
 
 	/* 1. Walk command line for options and source file. */
 	for (i = 1; i < argc; i++)
@@ -152,12 +159,6 @@ int cecbdumpblock(int argc, char *argv[])
 			break;
 		}
 		
-		if (ec != 0)
-		{
-			fprintf(stderr, "  Read error: %d\n", ec);
-			break;
-		}
-
 		/* Print block header with start position */
 		if (path->tape_type == WAV)
 		{
@@ -167,14 +168,21 @@ int cecbdumpblock(int argc, char *argv[])
 		else
 		{
 			/* CAS/C10: Calculate absolute bit position from byte/bit state */
-			printf("Block: Type=0x%02x, Len=%d,",
+			printf("Block: Type=0x%02x, Len=%d",
 			       block_type, block_length);
 		}
 
 		/* Handle CRC warnings gracefully (non-fatal for dump) */
 		if (path->block_cksum != path->block_cksum_calc)
 		{
-			printf(", CKSUM Error=0x%02x ≠ 0x%02x", path->block_cksum, path->block_cksum_calc);
+			if (use_color)
+			{
+				printf(", \033[31m CKSUM Error=0x%02x ≠ 0x%02x\033[0m", path->block_cksum, path->block_cksum_calc);
+			}
+			else
+			{
+				printf(", CKSUM Error=0x%02x ≠ 0x%02x", path->block_cksum, path->block_cksum_calc);
+			}
 		}
 		else
 			printf(", CKSUM=0x%02x", path->block_cksum);

@@ -516,9 +516,9 @@ static error_code CopyCECBFile(char *srcfile, char *dstfile, int eolTranslate,
 						   &xx_tokenize_buffer,
 						   &xx_tokenize_size,
 						   destpath->type == DECB);
-		   }
-		   else
-		   {
+			}
+			else
+			{
 				ec = _decb_entoken(buffer, buffer_size,
 						   &xx_tokenize_buffer,
 						   &xx_tokenize_size,
@@ -595,8 +595,26 @@ static error_code CopyCECBFile(char *srcfile, char *dstfile, int eolTranslate,
 		}
 	}
 
+	// If we're writing a tokenized BASIC type file
+	// to cassette remove decb header at the start.
+	if (destpath->type == CECB)
+	{
+		cecb_file_stat dest_file_stat;
+		ec = _cecb_gs_fd(destpath->path.cecb, &dest_file_stat);
+		
+		if (dest_file_stat.file_type == 0 && buffer[0] == 0xff)
+		{
+			fprintf(stderr, "cecb copy: skipping first 3 bytes of tokenized BASIC file: %.8s\n",
+			destpath->path.cecb->filename);
+			buffer_size -= 3;
+			ec = _coco_write(destpath, &(buffer[3]), &buffer_size);
+			goto done;
+		}
+	}
+	 
 	ec = _coco_write(destpath, buffer, &buffer_size);
 
+done:	
 	if (buffer != NULL)
 		free(buffer);
 

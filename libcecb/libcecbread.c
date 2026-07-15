@@ -122,8 +122,6 @@ error_code _cecb_read_next_dir_entry(cecb_path_id path,
 
 	while (1)
 	{
-// 		printf("sample before _cecb_read_next_block: %ld\n", path->wav_current_sample);
-		
 		ec = _cecb_read_next_block(path, &block_type, &block_length, data);
 
 		// If we hit a hard read error (not a CRC warning), stop entirely

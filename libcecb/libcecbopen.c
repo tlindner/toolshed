@@ -5,6 +5,7 @@
  ********************************************************************/
 
 #include "cecbpath.h"
+#include <limits.h>
 
 double cecb_ratio = 1.85;
 double cecb_threshold = 0.2;
@@ -125,11 +126,19 @@ error_code _cecb_create(cecb_path_id * path, char *pathlist, int mode,
 		      ((*path)->wav_data_start + (*path)->wav_data_length),
 		      SEEK_SET);
 	}
+
+	/* record length of CAS/C10 files. */
 	else if (((*path)->tape_type == CAS) || ((*path)->tape_type == C10))
 	{
 		fseek((*path)->fd, 0, SEEK_END);
-		(*path)->cas_start_byte = ftell((*path)->fd);
-		(*path)->cas_start_bit = 0x01;
+		(*path)->cas_total_bytes = ftell((*path)->fd);
+
+		if ((*path)->play_at == LONG_MAX)
+			(*path)->play_at = ((*path)->cas_total_bytes * 8) - 1;
+		
+		(*path)->cas_start_byte = (*path)->cas_current_byte = (*path)->play_at / 8;
+		(*path)->cas_start_bit = (*path)->cas_current_bit = 0x01 << ((*path)->play_at % 8);
+		fseek((*path)->fd, (*path)->cas_start_byte, SEEK_SET);
 	}
 	else
 	{

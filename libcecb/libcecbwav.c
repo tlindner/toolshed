@@ -159,6 +159,10 @@ error_code _cecb_parse_riff(cecb_path_id path)
 		return EOS_WT;
 
 	path->wav_total_samples = path->wav_data_length / (path->wav_bits_per_sample/8);
+	
+	if (path->play_at == LONG_MAX)
+		path->play_at = path->wav_total_samples - 1;
+		
 	position_tape(path, path->play_at);
 
 	/* Scan rest tape for a leader, this will 

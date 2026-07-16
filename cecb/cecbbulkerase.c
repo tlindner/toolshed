@@ -91,6 +91,12 @@ int cecbbulkerase(int argc, char *argv[])
 		{
 			p = argv[i];
 
+			if (!strendcasecmp(argv[i], WAV_FILE_EXTENSION))
+			{
+				printf("Skipping %s, not WAV file.\n", argv[i]);
+				continue;
+			}
+			
 			ec = _cecb_bulkerase(argv[i], sample_rate,
 					     bits_per_sample, silence_length);
 

@@ -125,7 +125,8 @@ static int do_dir(char **argv, char *p)
 			}
 
 			printf("%c %8.8s %d ($%02x) %c ($%02x)\n", ec == EOS_CRC ? '!' : ' ',
-				dir_entry.filename, dir_entry.file_type, dir_entry.file_type, asciiflag, asciiflag);
+				dir_entry.filename, dir_entry.file_type, dir_entry.file_type, asciiflag,
+				asciiflag);
 		}
 
 		ec = _cecb_close(path);

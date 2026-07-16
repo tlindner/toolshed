@@ -3,12 +3,12 @@
  *
  * $Id$
  ********************************************************************/
+#include <limits.h>
 #include <util.h>
 #include <string.h>
 #include <cococonv.h>
 #include <cecbpath.h>
 #include <sys/stat.h>
-
 
 #define YES 1
 #define NO 0
@@ -28,7 +28,7 @@ static char *GetFilename(char *path);
 /* Help message */
 static char const *const helpMessage[] = {
 	"Syntax: copy {[<opts>]} <srcfile> {[<...>]} <target> {[<opts>]}\n",
-	"Usage:  Copy one or more files to a target directory.\n",
+	"Usage:  Copy one or more files to the end of an image file.\n",
 	"Options:\n",
 	"     -[0-3]     file type (when copying to a Cassette BASIC image)\n",
 	"                  0 = BASIC program\n",
@@ -36,15 +36,16 @@ static char const *const helpMessage[] = {
 	"                  2 = machine-language program\n",
 	"                  3 = text editor source file\n",
 	"     -[a|b]     data type (a = ASCII, b = binary)\n",
-	"     -[g|n]     gap flag (g = gaps, n = no gaps)\n",
+	"     -[g|n]     gap mode (g = gaps, n = no gaps)\n",
 	"     -d<n>      load address\n",
 	"     -e<n>      execution address\n",
-	"     -l         perform end of line translation\n",
-	"     -t         perform BASIC entokenization of ASCII text\n",
-	"     -k         perform BASIC detokenization of binary data\n",
-	"     -s         perform S Record encode of machine language loadables\n",
-	"     -f         perform S Record decode of ASCII text file\n",
-	"     -c         perform segment concatenation on machine language loadables\n",
+	"     -l         translate line endings\n",
+	"     -t         entokenize BASIC ASCII text\n",
+	"     -k         detokenize BASIC program\n",
+	"     -s         encode as Motorola S-record\n",
+	"     -f         decode Motorola S-record\n",
+	"     -c         concatenate machine-language segments\n",
+	"     -p         honor global start position (may overwrite data)\n",
 	NULL
 };
 
@@ -61,7 +62,12 @@ int cecbcopy(int argc, char *argv[])
 		0, ml_exec_address = -1, ml_load_address = -1;
 	int file_type = -1, data_type = -1, gap = -1;
 	char df[256];
+	long save_cecb_start_sample;
 
+	/* 0. Copy is dangerous, let's default to the end of the image */
+
+	save_cecb_start_sample = cecb_start_sample;
+	cecb_start_sample = LONG_MAX;
 
 	/* 1. Walk command line for options. */
 
@@ -141,6 +147,10 @@ int cecbcopy(int argc, char *argv[])
 					p = p - 1;
 					break;
 
+				case 'p':
+					cecb_start_sample = save_cecb_start_sample;
+					break;
+
 				case 'h':
 				case '?':
 					show_help(helpMessage);
@@ -198,9 +208,6 @@ int cecbcopy(int argc, char *argv[])
 
 			ec = _coco_open(&tmp_path, desttarget,
 					FAM_DIR | FAM_READ);
-
-//                      _coco_gs_pathtype(desttarget, &type);
-
 
 			if (ec == 0)
 			{
@@ -516,9 +523,9 @@ static error_code CopyCECBFile(char *srcfile, char *dstfile, int eolTranslate,
 						   &xx_tokenize_buffer,
 						   &xx_tokenize_size,
 						   destpath->type == DECB);
-		   }
-		   else
-		   {
+			}
+			else
+			{
 				ec = _decb_entoken(buffer, buffer_size,
 						   &xx_tokenize_buffer,
 						   &xx_tokenize_size,
@@ -595,8 +602,26 @@ static error_code CopyCECBFile(char *srcfile, char *dstfile, int eolTranslate,
 		}
 	}
 
+	// If we're writing a tokenized BASIC type file
+	// to cassette remove decb header at the start.
+	if (destpath->type == CECB)
+	{
+		cecb_file_stat dest_file_stat;
+		ec = _cecb_gs_fd(destpath->path.cecb, &dest_file_stat);
+		
+		if (dest_file_stat.file_type == 0 && buffer[0] == 0xff)
+		{
+			fprintf(stderr, "cecb copy: skipping first 3 bytes of tokenized BASIC file: %.8s\n",
+			destpath->path.cecb->filename);
+			buffer_size -= 3;
+			ec = _coco_write(destpath, &(buffer[3]), &buffer_size);
+			goto done;
+		}
+	}
+	 
 	ec = _coco_write(destpath, buffer, &buffer_size);
 
+done:	
 	if (buffer != NULL)
 		free(buffer);
 

@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: diskshed-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   DISKSHED_VERSION: 0.1.0
   WX_VERSION: 3.2.11
@@ -113,7 +117,7 @@ jobs:
         run: |
           cmake -S gui/wx -B build/diskshed -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DwxWidgets_CONFIG_EXECUTABLE="$PWD/wx-install/bin/wx-config" \
+            -DCMAKE_PREFIX_PATH="$PWD/wx-install" \
             -DDISKSHED_REQUIRE_GUI=ON
           cmake --build build/diskshed
           build/diskshed/toolshed-image-smoke.exe c3/prep19/ghcprep.dsk

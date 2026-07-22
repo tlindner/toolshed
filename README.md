@@ -11,10 +11,22 @@ The repository contains:
 - source code for the Microware C compiler for cross-hosted compilation (currently needs work).
 - other miscellaneous tools.
 - assemblers to perform cross-development from Windows, Linux, and macOS (see the NOTE below on assembler recommendations).
+- DiskShed, a cross-platform desktop application for browsing and editing OS-9 RBF and Disk BASIC images.
 
 **NOTE:** while the venerable 6809 cross-assembler, mamou, is part of the repository, it is only kept for historical value. Everyone should really be using William Astle's excellent LWTOOLS which contains the *lwasm* 6809 assembler and *lwlink* linker. [Download the latest version of the source here.](http://lwtools.projects.l-w.ca)
 
 Find the documentation for some of the command in Toolshed's [Wiki](https://github.com/nitros9project/toolshed/wiki)
+
+## DiskShed GUI
+
+DiskShed provides a native wxWidgets interface to ToolShed's OS-9 RBF and Disk
+BASIC filesystem libraries. It supports format-aware directory listings,
+multiple image windows, import and export, drag and drop, OS-9 directory
+navigation, and backup-protected editing operations.
+
+The GUI is optional and uses its own CMake build, so it does not change the
+existing command-line build. See the [GUI overview](gui/README.md) and the
+[DiskShed build instructions](gui/wx/README.md) for requirements and usage.
 
 ## Building on Windows
 

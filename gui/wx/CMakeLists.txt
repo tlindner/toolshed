@@ -92,18 +92,53 @@ add_executable(toolshed-image-edit-smoke src/edit_smoke.cpp)
 target_link_libraries(toolshed-image-edit-smoke PRIVATE toolshed_image)
 
 option(DISKSHED_BUILD_GUI "Build the DiskShed desktop application" ON)
+option(DISKSHED_REQUIRE_GUI "Fail configuration when wxWidgets is unavailable" OFF)
 if(DISKSHED_BUILD_GUI)
-    find_package(wxWidgets QUIET COMPONENTS core base)
-    if(wxWidgets_FOUND)
-        include(${wxWidgets_USE_FILE})
+    # vcpkg and modern wxWidgets installations export wx:: targets. Distribution
+    # packages and Homebrew are also supported through CMake's FindwxWidgets
+    # module, which exposes the traditional variables.
+    find_package(wxWidgets CONFIG QUIET)
+    if(TARGET wx::core AND TARGET wx::base)
+        set(DISKSHED_WX_LIBRARIES wx::core wx::base)
+    else()
+        find_package(wxWidgets QUIET COMPONENTS core base)
+        if(wxWidgets_FOUND)
+            include(${wxWidgets_USE_FILE})
+            set(DISKSHED_WX_LIBRARIES ${wxWidgets_LIBRARIES})
+        endif()
+    endif()
+
+    if(DISKSHED_WX_LIBRARIES)
         add_executable(diskshed MACOSX_BUNDLE WIN32 src/main.cpp)
-        target_link_libraries(diskshed PRIVATE toolshed_image ${wxWidgets_LIBRARIES})
+        target_link_libraries(diskshed PRIVATE toolshed_image ${DISKSHED_WX_LIBRARIES})
+        if(MINGW)
+            target_link_options(diskshed PRIVATE -static-libgcc -static-libstdc++)
+        endif()
         set_target_properties(diskshed PROPERTIES
             OUTPUT_NAME "DiskShed"
             MACOSX_BUNDLE_BUNDLE_NAME "DiskShed"
             MACOSX_BUNDLE_GUI_IDENTIFIER "org.nitros9.diskshed"
+            MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+            MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
         )
+
+        if(APPLE)
+            install(TARGETS diskshed BUNDLE DESTINATION .)
+        elseif(WIN32)
+            install(TARGETS diskshed RUNTIME DESTINATION .)
+        else()
+            include(GNUInstallDirs)
+            install(TARGETS diskshed RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+            install(FILES packaging/org.nitros9.diskshed.desktop
+                DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
+            install(FILES packaging/org.nitros9.diskshed.svg
+                DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps)
+        endif()
     else()
-        message(WARNING "wxWidgets was not found; building the adapter smoke test only")
+        if(DISKSHED_REQUIRE_GUI)
+            message(FATAL_ERROR "wxWidgets was not found but DISKSHED_REQUIRE_GUI is enabled")
+        else()
+            message(WARNING "wxWidgets was not found; building the adapter smoke test only")
+        endif()
     endif()
 endif()

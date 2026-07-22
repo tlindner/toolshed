@@ -26,7 +26,8 @@ navigation, and backup-protected editing operations.
 
 The GUI is optional and uses its own CMake build, so it does not change the
 existing command-line build. See the [GUI overview](gui/README.md) and the
-[DiskShed build instructions](gui/wx/README.md) for requirements and usage.
+[DiskShed build instructions](gui/wx/README.md) for requirements, native
+Linux/macOS/Windows release artifacts, and usage.
 
 ## Building on Windows
 

@@ -30,6 +30,32 @@ build/wx/toolshed-image-smoke path/to/image.dsk CMDS
 build/wx/toolshed-image-smoke path/to/image.dsk --extract CMDS/shell shell
 ```
 
+## Release binaries
+
+The `Build DiskShed` GitHub Actions workflow creates native binaries on their
+respective operating systems rather than cross-compiling the GUI. Every branch
+and pull request produces downloadable workflow artifacts for:
+
+- macOS on Apple silicon (`arm64`)
+- macOS on Intel (`x86_64`)
+- Windows (`x86_64`)
+- Linux (`x86_64` AppImage)
+
+The macOS and Windows builds link wxWidgets statically. The Linux AppImage
+bundles wxGTK and its non-system runtime dependencies. Pushing a tag beginning
+with `v` builds all four artifacts, verifies their SHA-256 checksum files, and
+attaches them to the corresponding GitHub release. For example:
+
+```sh
+git tag v0.1.0
+git push upstream v0.1.0
+```
+
+Release tags should only be pushed after the version in this CMake project and
+the `DISKSHED_VERSION` workflow variable agree. The generated macOS and Windows
+packages are currently unsigned; code signing and macOS notarization can be
+added when the project has the required certificates and CI secrets.
+
 DiskShed supports opening an image, format detection, nested OS-9 directory
 navigation, Back/Up/Refresh commands, native file export, file-size lookup, and
 basic Disk BASIC type descriptions. The table adapts to the image format: OS-9

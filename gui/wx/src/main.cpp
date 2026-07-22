@@ -497,7 +497,8 @@ private:
             }
             SetStatusText(wxString::Format("Exported %s • %s",
                                             wxString::FromUTF8(entry.name),
-                                            wxFileName::GetHumanReadableSize(bytes.size())));
+                                            wxFileName::GetHumanReadableSize(wxULongLong(
+                                                static_cast<unsigned long long>(bytes.size())))));
         } catch (const std::exception& error) {
             ShowError("Unable to export file", error);
         }
@@ -514,7 +515,8 @@ private:
                 wxVector<wxVariant> row;
                 row.push_back(wxVariant(wxString::FromUTF8(entry.name)));
                 row.push_back(wxVariant(entry.directory ? wxString() :
-                    wxFileName::GetHumanReadableSize(entry.size)));
+                    wxFileName::GetHumanReadableSize(wxULongLong(
+                        static_cast<unsigned long long>(entry.size)))));
                 row.push_back(wxVariant(wxString::FromUTF8(entry.type)));
                 if (image_->format() == toolshed::ImageFormat::disk_basic) {
                     row.push_back(wxVariant(wxString::FromUTF8(entry.encoding)));

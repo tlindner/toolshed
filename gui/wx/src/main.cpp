@@ -194,14 +194,15 @@ private:
         path_label_->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
         outer->Add(path_label_, 0, wxLEFT | wxRIGHT | wxTOP | wxBOTTOM, 14);
 
+        // Avoid wxDV_ROW_LINES and wxDV_VERT_RULES here. On macOS 15 AppKit's
+        // private NSTableBackgroundView can crash while redrawing a scrolled
+        // table that uses native grid-line background drawing.
+        long list_style = wxDV_MULTIPLE;
+#ifndef __WXOSX__
+        list_style |= wxDV_ROW_LINES | wxDV_VERT_RULES;
+#endif
         list_ = new wxDataViewListCtrl(panel, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-                                       wxDV_ROW_LINES | wxDV_VERT_RULES | wxDV_MULTIPLE);
-        list_->AppendTextColumn("Name", wxDATAVIEW_CELL_INERT, 275, wxALIGN_LEFT,
-                                wxDATAVIEW_COL_RESIZABLE);
-        list_->AppendTextColumn("Size", wxDATAVIEW_CELL_INERT, 90, wxALIGN_RIGHT,
-                                wxDATAVIEW_COL_RESIZABLE);
-        list_->AppendTextColumn("Type", wxDATAVIEW_CELL_INERT, 145, wxALIGN_LEFT,
-                                wxDATAVIEW_COL_RESIZABLE);
+                                       list_style);
         outer->Add(list_, 1, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 14);
         panel->SetSizer(outer);
     }
@@ -209,7 +210,6 @@ private:
     void ConfigureColumns()
     {
         list_->DeleteAllItems();
-        list_->ClearColumns();
         if (image_->format() == toolshed::ImageFormat::disk_basic) {
             list_->AppendTextColumn("Name", wxDATAVIEW_CELL_INERT, 330, wxALIGN_LEFT,
                                     wxDATAVIEW_COL_RESIZABLE);
@@ -519,10 +519,7 @@ private:
         }
         const auto& entry = entries_[row];
         if (entry.directory) {
-            // wxOSX is still dispatching the native table activation event here.
-            // Replacing its model synchronously can leave AppKit drawing objects
-            // that DeleteAllItems() has just invalidated, so reload after the
-            // current native event has unwound.
+            // Keep directory model replacement outside the activation callback.
             NavigateTo(entry);
         } else {
             ExportEntry(entry);

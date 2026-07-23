@@ -406,15 +406,31 @@ private:
 
     void OnActivate(wxDataViewEvent& event)
     {
+        if (navigation_pending_) {
+            return;
+        }
         const int row = list_->ItemToRow(event.GetItem());
         if (row < 0 || static_cast<std::size_t>(row) >= entries_.size()) {
             return;
         }
         const auto& entry = entries_[row];
         if (entry.directory) {
-            history_.push_back(current_directory_);
-            current_directory_ = entry.image_path;
-            LoadDirectory();
+            // wxOSX is still dispatching the native table activation event here.
+            // Replacing its model synchronously can leave AppKit drawing objects
+            // that DeleteAllItems() has just invalidated, so reload after the
+            // current native event has unwound.
+            const auto previous_directory = current_directory_;
+            const auto next_directory = entry.image_path;
+            navigation_pending_ = true;
+            CallAfter([this, previous_directory, next_directory] {
+                navigation_pending_ = false;
+                if (!image_) {
+                    return;
+                }
+                history_.push_back(previous_directory);
+                current_directory_ = next_directory;
+                LoadDirectory();
+            });
         } else {
             ExportEntry(entry);
         }
@@ -422,6 +438,9 @@ private:
 
     void OnSelection(wxDataViewEvent&)
     {
+        if (reloading_list_) {
+            return;
+        }
         // A native drag must begin promptly. Prepare selected image files before
         // the user starts moving the mouse so multi-file extraction cannot stall it.
         try {
@@ -507,10 +526,17 @@ private:
     void LoadDirectory()
     {
         try {
-            entries_ = image_->list_directory(current_directory_);
+            auto next_entries = image_->list_directory(current_directory_);
             std::error_code ignored;
             std::filesystem::remove_all(drag_directory_, ignored);
+
+            // DeleteAllItems() sends selection notifications on some ports. Keep
+            // those callbacks from observing a mixture of the old native model
+            // and the new entry vector, and avoid intermediate Cocoa redraws.
+            reloading_list_ = true;
+            list_->Freeze();
             list_->DeleteAllItems();
+            entries_ = std::move(next_entries);
             for (const auto& entry : entries_) {
                 wxVector<wxVariant> row;
                 row.push_back(wxVariant(wxString::FromUTF8(entry.name)));
@@ -531,6 +557,8 @@ private:
                 }
                 list_->AppendItem(row);
             }
+            list_->Thaw();
+            reloading_list_ = false;
 
             path_label_->SetLabel(display_path(current_directory_));
             SetStatusText(wxString::Format("%s • %zu entries",
@@ -538,6 +566,10 @@ private:
                                             entries_.size()));
             UpdateCommands();
         } catch (const std::exception& error) {
+            if (reloading_list_) {
+                list_->Thaw();
+                reloading_list_ = false;
+            }
             ShowError("Unable to read directory", error);
         }
     }
@@ -634,6 +666,8 @@ private:
     std::string current_directory_;
     std::vector<std::string> history_;
     std::filesystem::path drag_directory_;
+    bool navigation_pending_ = false;
+    bool reloading_list_ = false;
 };
 
 class DiskShedApp final : public wxApp {

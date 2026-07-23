@@ -12,6 +12,7 @@
 #include <wx/frame.h>
 #include <wx/menu.h>
 #include <wx/msgdlg.h>
+#include <wx/platinfo.h>
 #include <wx/sizer.h>
 #include <wx/stattext.h>
 #include <wx/textctrl.h>
@@ -194,12 +195,14 @@ private:
         path_label_->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
         outer->Add(path_label_, 0, wxLEFT | wxRIGHT | wxTOP | wxBOTTOM, 14);
 
-        // Avoid wxDV_ROW_LINES and wxDV_VERT_RULES here. On macOS 15 AppKit's
-        // private NSTableBackgroundView can crash while redrawing a scrolled
-        // table that uses native grid-line background drawing.
-        long list_style = wxDV_MULTIPLE;
-#ifndef __WXOSX__
-        list_style |= wxDV_ROW_LINES | wxDV_VERT_RULES;
+        long list_style = wxDV_MULTIPLE | wxDV_ROW_LINES | wxDV_VERT_RULES;
+#ifdef __WXOSX__
+        // Sequoia's private NSTableBackgroundView can crash while redrawing a
+        // scrolled table that uses native grid-line background drawing. Avoid
+        // this path on macOS 15 and earlier, retaining it on newer releases.
+        if (wxPlatformInfo::Get().GetOSMajorVersion() <= 15) {
+            list_style &= ~(wxDV_ROW_LINES | wxDV_VERT_RULES);
+        }
 #endif
         list_ = new wxDataViewListCtrl(panel, wxID_ANY, wxDefaultPosition, wxDefaultSize,
                                        list_style);
@@ -457,7 +460,7 @@ private:
             auto* text = new wxTextCtrl(&dialog, wxID_ANY, wxString::FromUTF8(details),
                                         wxDefaultPosition, wxDefaultSize,
                                         wxTE_MULTILINE | wxTE_READONLY | wxTE_DONTWRAP);
-            text->SetFont(wxFontInfo(11).Family(wxFONTFAMILY_TELETYPE));
+            text->SetFont(wxFontInfo(13).Family(wxFONTFAMILY_TELETYPE));
             layout->Add(text, 1, wxEXPAND | wxALL, 12);
             layout->Add(dialog.CreateSeparatedButtonSizer(wxOK), 0,
                         wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 12);

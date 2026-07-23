@@ -97,7 +97,7 @@ jobs:
       - name: Build wxWidgets
         shell: msys2 {0}
         run: |
-          if test ! -x wx-install/bin/wx-config; then
+          if test ! -f wx-install/lib/cmake/wxWidgets-3.2/wxWidgetsConfig.cmake; then
             curl -L --fail --retry 3 \
               -o wxwidgets.tar.bz2 \
               "https://github.com/wxWidgets/wxWidgets/releases/download/v${WX_VERSION}/wxWidgets-${WX_VERSION}.tar.bz2"

@@ -4,6 +4,10 @@ DiskShed is a wxWidgets desktop application for browsing and editing OS-9 RBF
 and Disk BASIC images. It deliberately builds the existing ToolShed C filesystem
 sources without changing the repository's current Makefiles.
 
+The floppy-and-shed application icon is embedded in the macOS application bundle
+and Windows executable; Linux installs the matching scalable icon for desktop
+launchers and AppImage packaging.
+
 ## Build
 
 Install CMake and wxWidgets 3.2 or newer, then run:

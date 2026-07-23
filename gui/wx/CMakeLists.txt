@@ -111,6 +111,18 @@ if(DISKSHED_BUILD_GUI)
     if(DISKSHED_WX_LIBRARIES)
         add_executable(diskshed MACOSX_BUNDLE WIN32 src/main.cpp)
         target_link_libraries(diskshed PRIVATE toolshed_image ${DISKSHED_WX_LIBRARIES})
+        if(APPLE)
+            set(DISKSHED_MAC_ICON
+                "${CMAKE_CURRENT_SOURCE_DIR}/packaging/org.nitros9.diskshed.icns")
+            set_source_files_properties(${DISKSHED_MAC_ICON} PROPERTIES
+                MACOSX_PACKAGE_LOCATION "Resources")
+            target_sources(diskshed PRIVATE ${DISKSHED_MAC_ICON})
+        elseif(WIN32)
+            set(DISKSHED_WINDOWS_ICON
+                "${CMAKE_CURRENT_SOURCE_DIR}/packaging/org.nitros9.diskshed.ico")
+            configure_file(packaging/diskshed.rc.in diskshed.rc @ONLY)
+            target_sources(diskshed PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/diskshed.rc")
+        endif()
         if(MINGW)
             target_link_options(diskshed PRIVATE -static-libgcc -static-libstdc++)
         endif()
@@ -118,6 +130,7 @@ if(DISKSHED_BUILD_GUI)
             OUTPUT_NAME "DiskShed"
             MACOSX_BUNDLE_BUNDLE_NAME "DiskShed"
             MACOSX_BUNDLE_GUI_IDENTIFIER "org.nitros9.diskshed"
+            MACOSX_BUNDLE_ICON_FILE "org.nitros9.diskshed.icns"
             MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
             MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
         )

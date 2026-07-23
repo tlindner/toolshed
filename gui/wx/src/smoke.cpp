@@ -10,16 +10,22 @@ int main(int argc, char** argv)
     const bool list_mode = argc == 2 || argc == 3;
     const bool extract_mode = argc == 5 && std::string(argv[2]) == "--extract";
     const bool ident_mode = argc == 4 && std::string(argv[2]) == "--ident";
-    if (!list_mode && !extract_mode && !ident_mode) {
+    const bool probe_mode = argc == 4 && std::string(argv[2]) == "--probe-module";
+    if (!list_mode && !extract_mode && !ident_mode && !probe_mode) {
         std::cerr << "usage: toolshed-image-smoke IMAGE [DIRECTORY]\n"
                      "       toolshed-image-smoke IMAGE --extract FILE OUTPUT\n"
-                     "       toolshed-image-smoke IMAGE --ident FILE\n";
+                     "       toolshed-image-smoke IMAGE --ident FILE\n"
+                     "       toolshed-image-smoke IMAGE --probe-module FILE\n";
         return 2;
     }
 
     try {
         const auto image = toolshed::DiskImage::open(argv[1]);
         std::cout << image.format_name() << "\n";
+        if (probe_mode) {
+            std::cout << (image.has_module_signature(argv[3]) ? "module\n" : "not module\n");
+            return 0;
+        }
         if (ident_mode) {
             std::cout << image.identify_file(argv[3]);
             return 0;

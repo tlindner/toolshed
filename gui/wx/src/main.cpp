@@ -441,8 +441,8 @@ private:
     void OnIdent(wxCommandEvent&)
     {
         const auto rows = SelectedRows();
-        if (!image_ || image_->format() != toolshed::ImageFormat::os9 ||
-            rows.size() != 1 || entries_[rows.front()].directory) {
+        if (!image_ || rows.size() != 1 || entries_[rows.front()].directory ||
+            !image_->has_module_signature(entries_[rows.front()].image_path)) {
             return;
         }
 
@@ -480,15 +480,15 @@ private:
         const bool single = rows.size() == 1;
         const bool folder = single && entries_[rows.front()].directory;
         const bool file = single && !folder;
-        const bool os9_file = file && image_ &&
-            image_->format() == toolshed::ImageFormat::os9;
+        const bool identifiable_file = file && image_ &&
+            image_->has_module_signature(entries_[rows.front()].image_path);
 
         wxMenu menu;
         if (folder) {
             menu.Append(id_open_entry, "&Open");
             menu.AppendSeparator();
         } else if (file) {
-            if (os9_file) {
+            if (identifiable_file) {
                 menu.Append(id_ident, "&Ident…");
             }
             menu.Append(id_export, "&Export…");

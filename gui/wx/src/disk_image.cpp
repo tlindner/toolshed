@@ -148,6 +148,14 @@ std::uint16_t read_be16(const std::uint8_t* bytes)
                                       bytes[1]);
 }
 
+std::uint32_t read_be32(const std::uint8_t* bytes)
+{
+    return (static_cast<std::uint32_t>(bytes[0]) << 24) |
+           (static_cast<std::uint32_t>(bytes[1]) << 16) |
+           (static_cast<std::uint32_t>(bytes[2]) << 8) |
+           static_cast<std::uint32_t>(bytes[3]);
+}
+
 std::string os9_name(const std::uint8_t* module, std::size_t module_size,
                      std::size_t name_offset, std::size_t& edition_offset)
 {
@@ -192,6 +200,97 @@ std::string referenced_name(const std::uint8_t* module, std::size_t module_size,
 {
     std::size_t ignored = 0;
     return os9_name(module, module_size, offset, ignored);
+}
+
+std::string identify_osk_modules(std::vector<std::uint8_t>& bytes)
+{
+    std::ostringstream output;
+    std::size_t offset = 0;
+    unsigned int module_number = 0;
+    while (offset < bytes.size()) {
+        if (bytes.size() - offset < OSK_HEADER_SIZE || bytes[offset] != OSK_ID0 ||
+            bytes[offset + 1] != OSK_ID1) {
+            throw std::runtime_error(module_number == 0
+                ? "The selected file is not an OS-9/68K module"
+                : "Unexpected data follows the last OS-9/68K module");
+        }
+
+        auto* module = bytes.data() + offset;
+        const std::size_t module_size = read_be32(module + 4);
+        if (module_size < OSK_HEADER_SIZE + 3 || module_size > bytes.size() - offset) {
+            throw std::runtime_error("The OS-9/68K module is truncated or has an invalid size");
+        }
+
+        const std::size_t name_offset = read_be32(module + 12);
+        std::size_t ignored = 0;
+        const auto name = os9_name(module, module_size, name_offset, ignored);
+        const auto type = module[18] & 0x0f;
+        const auto language = module[19] & 0x0f;
+        const auto attributes = module[20];
+        const auto revision = module[21];
+
+        std::array<u_char, 3> calculated_crc = {0xff, 0xff, 0xff};
+        const bool crc_good = _os9_crc_compute(
+            module, static_cast<u_int>(module_size), calculated_crc.data()) != 0;
+        if (!crc_good) {
+            calculated_crc = {0xff, 0xff, 0xff};
+            _os9_crc_compute(module, static_cast<u_int>(module_size - 3),
+                             calculated_crc.data());
+            for (auto& value : calculated_crc) {
+                value ^= 0xff;
+            }
+        }
+
+        if (module_number++ != 0) {
+            output << "\n";
+        }
+        output << "Header for : " << name << "\n"
+               << "Module size: $" << std::uppercase << std::hex << module_size
+               << std::dec << "  #" << module_size << "\n"
+               << "Module CRC : $" << std::uppercase << std::hex << std::setfill('0')
+               << std::setw(2) << static_cast<unsigned int>(module[module_size - 3])
+               << std::setw(2) << static_cast<unsigned int>(module[module_size - 2])
+               << std::setw(2) << static_cast<unsigned int>(module[module_size - 1]);
+        if (crc_good) {
+            output << "  (Good)\n";
+        } else {
+            output << "  (Mismatch; calculated $" << std::setw(2)
+                   << static_cast<unsigned int>(calculated_crc[0]) << std::setw(2)
+                   << static_cast<unsigned int>(calculated_crc[1]) << std::setw(2)
+                   << static_cast<unsigned int>(calculated_crc[2]) << ")\n";
+        }
+
+        auto* osk_module = reinterpret_cast<OSK_MODULE_t*>(module);
+        const auto header_parity = _osk_header(osk_module);
+        output << "Hdr parity : $" << std::setw(4) << header_parity
+               << (header_parity == 0xffff ? "  (Good)\n" : "  (Bad)\n")
+               << "Edition    : $" << std::setw(4) << read_be16(module + 22) << std::dec
+               << "  #" << read_be16(module + 22) << "\n"
+               << "Ty/La At/Rv: $" << std::hex << std::setw(2)
+               << static_cast<unsigned int>(module[18]) << " $" << std::setw(2)
+               << static_cast<unsigned int>(module[19]) << " $" << std::setw(2)
+               << static_cast<unsigned int>(attributes) << " $" << std::setw(2)
+               << static_cast<unsigned int>(revision) << std::dec << "\n";
+
+        if (type == Prgrm && module_size >= 60) {
+            output << "Exec. off  : $" << std::hex << std::setw(8) << read_be32(module + 48)
+                   << std::dec << "  #" << read_be32(module + 48) << "\n"
+                   << "Data size  : $" << std::hex << std::setw(8) << read_be32(module + 56)
+                   << std::dec << "  #" << read_be32(module + 56) << "\n";
+        } else if (type == Drivr && module_size >= 60) {
+            output << "Exec. off  : $" << std::hex << std::setw(8) << read_be32(module + 48)
+                   << std::dec << "  #" << read_be32(module + 48) << "\n"
+                   << "Data size  : $" << std::hex << std::setw(8) << read_be32(module + 56)
+                   << std::dec << "  #" << read_be32(module + 56) << "\n";
+        }
+
+        output << module_type_name(type) << " module, "
+               << (language == Objct ? "68000 object" : module_language_name(language))
+               << ", " << ((attributes & ReEnt) != 0 ? "shareable" : "non-shareable")
+               << ", " << ((attributes & Modprot) != 0 ? "sticky" : "non-sticky") << "\n";
+        offset += module_size;
+    }
+    return output.str();
 }
 
 }  // namespace
@@ -347,13 +446,29 @@ std::vector<std::uint8_t> DiskImage::read_file(const std::string& requested_path
     return bytes;
 }
 
+bool DiskImage::has_module_signature(const std::string& requested_path) const noexcept
+{
+    try {
+        const auto image_path = normalize_image_path(requested_path);
+        CocoPath file(path_.string() + "," + image_path, FAM_READ);
+        std::array<u_char, 2> signature{};
+        u_int size = static_cast<u_int>(signature.size());
+        if (_coco_read(file.get(), signature.data(), &size) != 0 || size != signature.size()) {
+            return false;
+        }
+        return (signature[0] == OS9_ID0 && signature[1] == OS9_ID1) ||
+               (signature[0] == OSK_ID0 && signature[1] == OSK_ID1);
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
 std::string DiskImage::identify_file(const std::string& image_path) const
 {
-    if (format_ != ImageFormat::os9) {
-        throw std::runtime_error("Ident is only available for files in OS-9 images");
-    }
-
     auto bytes = read_file(image_path);
+    if (bytes.size() >= 2 && bytes[0] == OSK_ID0 && bytes[1] == OSK_ID1) {
+        return identify_osk_modules(bytes);
+    }
     std::ostringstream output;
     std::size_t offset = 0;
     unsigned int module_number = 0;

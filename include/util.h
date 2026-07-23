@@ -41,8 +41,9 @@ int os9list(int, char **);
 int os9makdir(int, char **);
 int os9modbust(int, char **);
 int os9padrom(int, char **);
-int os9rename(int, char **);
 int os9rdump(int, char **);
+int os9rename(int, char **);
+int os9setdate(int, char **);
 
 int StrToInt(char *s);
 #ifdef BDS

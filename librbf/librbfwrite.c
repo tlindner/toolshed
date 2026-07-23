@@ -303,3 +303,10 @@ error_code _os9_writedir(os9_path_id path, os9_dir_entry * dirent)
 
 	return ec;
 }
+
+int write_lsn(os9_path_id path, int lsn, void *buffer)
+{
+	_os9_lsn_fseek(path, lsn);
+
+	return fwrite(buffer, 1, path->bps, path->fd);
+}

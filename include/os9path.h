@@ -164,6 +164,7 @@ error_code _os9_readln(os9_path_id, void *, u_int *);
 error_code _os9_write(os9_path_id, void *, u_int *);
 error_code _os9_writeln(os9_path_id, char *, u_int *);
 error_code _os9_writedir(os9_path_id, os9_dir_entry *);
+int write_lsn(os9_path_id, int, void *);
 error_code _os9_makdir( char *pathlist );
 error_code _os9_delete( char *pathlist );
 error_code _os9_delete_directory(char *pathlist);

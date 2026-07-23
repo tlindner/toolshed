@@ -9,15 +9,21 @@ int main(int argc, char** argv)
 {
     const bool list_mode = argc == 2 || argc == 3;
     const bool extract_mode = argc == 5 && std::string(argv[2]) == "--extract";
-    if (!list_mode && !extract_mode) {
+    const bool ident_mode = argc == 4 && std::string(argv[2]) == "--ident";
+    if (!list_mode && !extract_mode && !ident_mode) {
         std::cerr << "usage: toolshed-image-smoke IMAGE [DIRECTORY]\n"
-                     "       toolshed-image-smoke IMAGE --extract FILE OUTPUT\n";
+                     "       toolshed-image-smoke IMAGE --extract FILE OUTPUT\n"
+                     "       toolshed-image-smoke IMAGE --ident FILE\n";
         return 2;
     }
 
     try {
         const auto image = toolshed::DiskImage::open(argv[1]);
         std::cout << image.format_name() << "\n";
+        if (ident_mode) {
+            std::cout << image.identify_file(argv[3]);
+            return 0;
+        }
         if (extract_mode) {
             const auto bytes = image.read_file(argv[3]);
             std::ofstream output(argv[4], std::ios::binary);

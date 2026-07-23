@@ -35,6 +35,7 @@ public:
     [[nodiscard]] std::string format_name() const;
     [[nodiscard]] std::vector<Entry> list_directory(const std::string& directory = {}) const;
     [[nodiscard]] std::vector<std::uint8_t> read_file(const std::string& image_path) const;
+    [[nodiscard]] std::string identify_file(const std::string& image_path) const;
     void import_file(const std::string& directory, const std::filesystem::path& host_file,
                      bool replace = false);
     void make_directory(const std::string& directory, const std::string& name);

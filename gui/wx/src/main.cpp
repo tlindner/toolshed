@@ -5,6 +5,7 @@
 #include <wx/dataview.h>
 #include <wx/datetime.h>
 #include <wx/dnd.h>
+#include <wx/dialog.h>
 #include <wx/ffile.h>
 #include <wx/filedlg.h>
 #include <wx/filename.h>
@@ -13,6 +14,7 @@
 #include <wx/msgdlg.h>
 #include <wx/sizer.h>
 #include <wx/stattext.h>
+#include <wx/textctrl.h>
 #include <wx/textdlg.h>
 #include <wx/toolbar.h>
 #include <wx/wx.h>
@@ -37,6 +39,8 @@ enum CommandId {
     id_new_folder,
     id_rename,
     id_delete,
+    id_open_entry,
+    id_ident,
 };
 
 wxString display_path(const std::string& path)
@@ -88,11 +92,14 @@ public:
         Bind(wxEVT_MENU, &MainFrame::OnNewFolder, this, id_new_folder);
         Bind(wxEVT_MENU, &MainFrame::OnRename, this, id_rename);
         Bind(wxEVT_MENU, &MainFrame::OnDelete, this, id_delete);
+        Bind(wxEVT_MENU, &MainFrame::OnOpenEntry, this, id_open_entry);
+        Bind(wxEVT_MENU, &MainFrame::OnIdent, this, id_ident);
         Bind(wxEVT_MENU, &MainFrame::OnRefresh, this, id_refresh);
         Bind(wxEVT_MENU, [this](wxCommandEvent&) { Close(true); }, wxID_EXIT);
         list_->Bind(wxEVT_DATAVIEW_ITEM_ACTIVATED, &MainFrame::OnActivate, this);
         list_->Bind(wxEVT_DATAVIEW_SELECTION_CHANGED, &MainFrame::OnSelection, this);
         list_->Bind(wxEVT_DATAVIEW_ITEM_BEGIN_DRAG, &MainFrame::OnBeginDrag, this);
+        list_->Bind(wxEVT_DATAVIEW_ITEM_CONTEXT_MENU, &MainFrame::OnContextMenu, this);
         list_->SetDropTarget(new HostFileDropTarget(
             [this](const wxArrayString& files) { return ImportHostFiles(files); }));
 
@@ -404,6 +411,103 @@ private:
         }
     }
 
+    void NavigateTo(const toolshed::Entry& entry)
+    {
+        if (!entry.directory || navigation_pending_) {
+            return;
+        }
+        const auto previous_directory = current_directory_;
+        const auto next_directory = entry.image_path;
+        navigation_pending_ = true;
+        CallAfter([this, previous_directory, next_directory] {
+            navigation_pending_ = false;
+            if (!image_) {
+                return;
+            }
+            history_.push_back(previous_directory);
+            current_directory_ = next_directory;
+            LoadDirectory();
+        });
+    }
+
+    void OnOpenEntry(wxCommandEvent&)
+    {
+        const auto rows = SelectedRows();
+        if (rows.size() == 1) {
+            NavigateTo(entries_[rows.front()]);
+        }
+    }
+
+    void OnIdent(wxCommandEvent&)
+    {
+        const auto rows = SelectedRows();
+        if (!image_ || image_->format() != toolshed::ImageFormat::os9 ||
+            rows.size() != 1 || entries_[rows.front()].directory) {
+            return;
+        }
+
+        const auto& entry = entries_[rows.front()];
+        try {
+            const auto details = image_->identify_file(entry.image_path);
+            wxDialog dialog(this, wxID_ANY,
+                            "Ident — " + wxString::FromUTF8(entry.name),
+                            wxDefaultPosition, wxSize(650, 520),
+                            wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER);
+            auto* layout = new wxBoxSizer(wxVERTICAL);
+            auto* text = new wxTextCtrl(&dialog, wxID_ANY, wxString::FromUTF8(details),
+                                        wxDefaultPosition, wxDefaultSize,
+                                        wxTE_MULTILINE | wxTE_READONLY | wxTE_DONTWRAP);
+            text->SetFont(wxFontInfo(11).Family(wxFONTFAMILY_TELETYPE));
+            layout->Add(text, 1, wxEXPAND | wxALL, 12);
+            layout->Add(dialog.CreateSeparatedButtonSizer(wxOK), 0,
+                        wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 12);
+            dialog.SetSizer(layout);
+            dialog.ShowModal();
+        } catch (const std::exception& error) {
+            ShowError("Unable to identify OS-9 module", error);
+        }
+    }
+
+    void OnContextMenu(wxDataViewEvent& event)
+    {
+        const auto item = event.GetItem();
+        if (item.IsOk() && !list_->IsSelected(item)) {
+            list_->UnselectAll();
+            list_->Select(item);
+        }
+
+        const auto rows = SelectedRows();
+        const bool single = rows.size() == 1;
+        const bool folder = single && entries_[rows.front()].directory;
+        const bool file = single && !folder;
+        const bool os9_file = file && image_ &&
+            image_->format() == toolshed::ImageFormat::os9;
+
+        wxMenu menu;
+        if (folder) {
+            menu.Append(id_open_entry, "&Open");
+            menu.AppendSeparator();
+        } else if (file) {
+            if (os9_file) {
+                menu.Append(id_ident, "&Ident…");
+            }
+            menu.Append(id_export, "&Export…");
+            menu.AppendSeparator();
+        }
+
+        menu.Append(id_rename, "&Rename…");
+        menu.Append(id_delete, "&Delete…");
+        menu.Enable(id_rename, single);
+        menu.Enable(id_delete, single);
+        menu.AppendSeparator();
+        menu.Append(id_import, "&Import Files…");
+        if (image_ && image_->format() == toolshed::ImageFormat::os9) {
+            menu.Append(id_new_folder, "New &Folder…");
+        }
+        menu.Append(id_refresh, "&Refresh");
+        PopupMenu(&menu);
+    }
+
     void OnActivate(wxDataViewEvent& event)
     {
         if (navigation_pending_) {
@@ -419,18 +523,7 @@ private:
             // Replacing its model synchronously can leave AppKit drawing objects
             // that DeleteAllItems() has just invalidated, so reload after the
             // current native event has unwound.
-            const auto previous_directory = current_directory_;
-            const auto next_directory = entry.image_path;
-            navigation_pending_ = true;
-            CallAfter([this, previous_directory, next_directory] {
-                navigation_pending_ = false;
-                if (!image_) {
-                    return;
-                }
-                history_.push_back(previous_directory);
-                current_directory_ = next_directory;
-                LoadDirectory();
-            });
+            NavigateTo(entry);
         } else {
             ExportEntry(entry);
         }

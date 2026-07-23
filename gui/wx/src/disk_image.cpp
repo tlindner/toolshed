@@ -4,13 +4,16 @@
 #include <array>
 #include <cctype>
 #include <fstream>
+#include <iomanip>
 #include <limits>
+#include <sstream>
 #include <stdexcept>
 #include <utility>
 #include <vector>
 
 extern "C" {
 #include <cocopath.h>
+#include <os9module.h>
 }
 
 namespace toolshed {
@@ -137,6 +140,58 @@ std::string lowercase_extension(const std::filesystem::path& path)
     std::transform(extension.begin(), extension.end(), extension.begin(),
                    [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
     return extension;
+}
+
+std::uint16_t read_be16(const std::uint8_t* bytes)
+{
+    return static_cast<std::uint16_t>((static_cast<std::uint16_t>(bytes[0]) << 8) |
+                                      bytes[1]);
+}
+
+std::string os9_name(const std::uint8_t* module, std::size_t module_size,
+                     std::size_t name_offset, std::size_t& edition_offset)
+{
+    if (name_offset >= module_size - 3) {
+        throw std::runtime_error("OS-9 module name is outside the module");
+    }
+
+    std::string name;
+    for (std::size_t cursor = name_offset; cursor < module_size - 3; ++cursor) {
+        const auto value = module[cursor];
+        name.push_back(static_cast<char>(value & 0x7f));
+        if ((value & 0x80) != 0) {
+            edition_offset = cursor + 1;
+            return name;
+        }
+    }
+    throw std::runtime_error("OS-9 module name is not terminated");
+}
+
+const char* module_type_name(unsigned int type)
+{
+    static constexpr std::array<const char*, 16> names = {
+        "???", "Program", "Subroutine", "Multi-module", "Data", "User 5",
+        "User 6", "User 7", "User 8", "User 9", "User A", "User B", "System",
+        "File Manager", "Device Driver", "Device Descriptor"
+    };
+    return names[type & 0x0f];
+}
+
+const char* module_language_name(unsigned int language)
+{
+    static constexpr std::array<const char*, 16> names = {
+        "Data", "6809 object", "BASIC09 I-code", "Pascal P-code", "C I-code",
+        "COBOL I-code", "FORTRAN I-code", "6309 object", "Unknown", "Unknown",
+        "Unknown", "Unknown", "Unknown", "Unknown", "Unknown", "Unknown"
+    };
+    return names[language & 0x0f];
+}
+
+std::string referenced_name(const std::uint8_t* module, std::size_t module_size,
+                            std::size_t offset)
+{
+    std::size_t ignored = 0;
+    return os9_name(module, module_size, offset, ignored);
 }
 
 }  // namespace
@@ -290,6 +345,111 @@ std::vector<std::uint8_t> DiskImage::read_file(const std::string& requested_path
         offset += chunk;
     }
     return bytes;
+}
+
+std::string DiskImage::identify_file(const std::string& image_path) const
+{
+    if (format_ != ImageFormat::os9) {
+        throw std::runtime_error("Ident is only available for files in OS-9 images");
+    }
+
+    auto bytes = read_file(image_path);
+    std::ostringstream output;
+    std::size_t offset = 0;
+    unsigned int module_number = 0;
+    while (offset < bytes.size()) {
+        if (bytes.size() - offset < OS9_HEADER_SIZE || bytes[offset] != OS9_ID0 ||
+            bytes[offset + 1] != OS9_ID1) {
+            throw std::runtime_error(module_number == 0
+                ? "The selected file is not an OS-9 module"
+                : "Unexpected data follows the last OS-9 module");
+        }
+
+        auto* module = bytes.data() + offset;
+        const std::size_t module_size = read_be16(module + 2);
+        if (module_size < OS9_HEADER_SIZE + 3 || module_size > bytes.size() - offset) {
+            throw std::runtime_error("The OS-9 module is truncated or has an invalid size");
+        }
+
+        const std::size_t name_offset = read_be16(module + 4);
+        std::size_t edition_offset = 0;
+        const auto name = os9_name(module, module_size, name_offset, edition_offset);
+        if (edition_offset >= module_size - 3) {
+            throw std::runtime_error("OS-9 module has no edition byte");
+        }
+        const auto type_language = module[6];
+        const auto attributes_revision = module[7];
+        std::uint8_t parity = 0;
+        for (std::size_t index = 0; index < OS9_HEADER_SIZE; ++index) {
+            parity ^= module[index];
+        }
+
+        std::array<u_char, 3> calculated_crc = {0xff, 0xff, 0xff};
+        const bool crc_good = _os9_crc_compute(
+            module, static_cast<u_int>(module_size), calculated_crc.data()) != 0;
+        if (!crc_good) {
+            calculated_crc = {0xff, 0xff, 0xff};
+            _os9_crc_compute(module, static_cast<u_int>(module_size - 3),
+                             calculated_crc.data());
+            for (auto& value : calculated_crc) {
+                value ^= 0xff;
+            }
+        }
+
+        if (module_number++ != 0) {
+            output << "\n";
+        }
+        output << "Header for : " << name << "\n"
+               << "Module size: $" << std::uppercase << std::hex << module_size
+               << std::dec << "  #" << module_size << "\n"
+               << "Module CRC : $" << std::uppercase << std::hex << std::setfill('0')
+               << std::setw(2) << static_cast<unsigned int>(module[module_size - 3])
+               << std::setw(2) << static_cast<unsigned int>(module[module_size - 2])
+               << std::setw(2) << static_cast<unsigned int>(module[module_size - 1]);
+        if (crc_good) {
+            output << "  (Good)\n";
+        } else {
+            output << "  (Mismatch; calculated $" << std::setw(2)
+                   << static_cast<unsigned int>(calculated_crc[0]) << std::setw(2)
+                   << static_cast<unsigned int>(calculated_crc[1]) << std::setw(2)
+                   << static_cast<unsigned int>(calculated_crc[2]) << ")\n";
+        }
+        output << "Hdr parity : $" << std::setw(2) << static_cast<unsigned int>(module[8])
+               << (parity == 0xff ? "  (Good)\n" : "  (Bad)\n");
+
+        const unsigned int type = (type_language >> 4) & 0x0f;
+        if ((type == Prgrm || type == Drivr) && module_size >= 13) {
+            const auto exec_offset = read_be16(module + 9);
+            const auto data_size = read_be16(module + 11);
+            output << "Exec. off  : $" << std::setw(4) << exec_offset << std::dec
+                   << "  #" << exec_offset << "\n"
+                   << "Data size  : $" << std::hex << std::setw(4) << data_size << std::dec
+                   << "  #" << data_size << "\n";
+        } else if (type == Devic && module_size >= 13) {
+            output << "File Mgr   : "
+                   << referenced_name(module, module_size, read_be16(module + 9)) << "\n"
+                   << "Driver     : "
+                   << referenced_name(module, module_size, read_be16(module + 11)) << "\n";
+        }
+
+        output << "Edition    : $" << std::hex << std::setw(2)
+               << static_cast<unsigned int>(module[edition_offset]) << std::dec
+               << "  #" << static_cast<unsigned int>(module[edition_offset]) << "\n"
+               << "Ty/La At/Rv: $" << std::hex << std::setw(2)
+               << static_cast<unsigned int>(type_language) << " $" << std::setw(2)
+               << static_cast<unsigned int>(attributes_revision) << std::dec << "\n"
+               << module_type_name(type) << " module, "
+               << module_language_name(type_language & 0x0f) << ", "
+               << ((attributes_revision & ReEnt) != 0 ? "re-entrant" : "non-shareable")
+               << ", " << ((attributes_revision & Modprot) != 0 ? "R/W" : "R/O") << "\n";
+
+        offset += module_size;
+    }
+
+    if (module_number == 0) {
+        throw std::runtime_error("The selected file is empty");
+    }
+    return output.str();
 }
 
 void DiskImage::ensure_backup()

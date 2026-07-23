@@ -28,6 +28,7 @@ from a terminal:
 build/wx/toolshed-image-smoke path/to/image.dsk
 build/wx/toolshed-image-smoke path/to/image.dsk CMDS
 build/wx/toolshed-image-smoke path/to/image.dsk --extract CMDS/shell shell
+build/wx/toolshed-image-smoke path/to/image.dsk --ident CMDS/shell
 ```
 
 ## Release binaries
@@ -61,7 +62,10 @@ navigation, Back/Up/Refresh commands, native file export, file-size lookup, and
 basic Disk BASIC type descriptions. The table adapts to the image format: OS-9
 shows Size, Type, Attributes, Owner, and Modified, while Disk BASIC shows Size,
 File Type, and Encoding. Double-click a folder to enter it or a file to export
-it.
+it. Right-click an entry for a context-sensitive menu. Folders offer **Open**,
+while files offer **Export**. Files in OS-9 images also offer **Ident**, which
+displays module metadata and recognizes files containing multiple concatenated
+modules. Disk BASIC files omit operations that do not apply to that filesystem.
 
 Opening another image creates another native window, so OS-9 and Disk BASIC
 images can be browsed side by side. The first image reuses the initial empty

@@ -10,7 +10,7 @@ OBJS	= makewav.o
 LIBS	= -lm
 
 $(BINARY)$(SUFEXE):	$(OBJS)
-	$(CC) $(OBJS) $(LIBS) -o $@
+	$(CC) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
 
 clean:
 	$(RM) $(BINARY) $(BINARY).exe *.o

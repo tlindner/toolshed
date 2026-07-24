@@ -9,7 +9,7 @@ BINARY	= ar2
 OBJS	= ar.o arsup.o lz1.o o2u.o
 
 $(BINARY)$(SUFEXE):	$(OBJS)
-	$(CC) $(OBJS) -o $@ $(DEBUG)
+	$(CC) $(LDFLAGS) $(OBJS) -o $@ $(DEBUG)
 
 $(OBJS):
 

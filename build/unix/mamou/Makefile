@@ -5,14 +5,23 @@ vpath %.c ../../../mamou
 
 DEBUG	= -g
 CFLAGS	+= -DLINUX -I../../../include $(DEBUG) -Wall
-LDFLAGS	+= -L../libcoco -L../libnative -L../libcecb -L../libdecb -L../librbf -L../libmisc -L../libsys -lcoco -lnative -ldecb -lcecb -lrbf -lmisc -lsys -lm $(DEBUG)
+SRCS = mamou_main.c evaluator.c pseudo.c h6309.c ffwd.c print.c util.c symbol_bucket.c
+OBJS = $(SRCS:.c=.o)
+DEPS = $(OBJS:.o=.d)
+LIBDEPS = libcoco.a libnative.a libcecb.a librbf.a libdecb.a libmisc.a libsys.a
+LIBPATHS = $(patsubst %,../%/$$(notdir %),$(patsubst %.a,%,$(LIBDEPS)))
+LIBPATHS = $(foreach lib,$(LIBDEPS),../$(basename $(lib))/$(lib))
+LDFLAGS_DIRS = $(foreach lib,$(LIBDEPS),-L../$(basename $(lib)))
+LDFLAGS_LIBS = $(patsubst lib%.a,-l%,$(LIBDEPS))
+override LDFLAGS += $(LDFLAGS_DIRS) $(LDFLAGS_LIBS) -lm $(DEBUG)
 
-mamou$(SUFEXE):		mamou_main.o evaluator.o pseudo.o h6309.o ffwd.o \
-		print.o util.o symbol_bucket.o
-	$(CC) -o $@ $^ $(LDFLAGS)
+mamou$(SUFEXE): $(OBJS) $(LIBPATHS)
+	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 
 clean:
 	$(RM) *.o mamou mamou.exe
 
 install: mamou
 	cp mamou $(HOME)/bin
+
+-include $(DEPS)

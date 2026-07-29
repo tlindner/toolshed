@@ -3,18 +3,21 @@ include ../rules.mak
 vpath %.c ../../../ar2
 vpath %.h ../../../ar2
 
-CFLAGS	+= -DSYSV
-
 BINARY	= ar2
-OBJS	= ar.o arsup.o lz1.o o2u.o
 
-$(BINARY)$(SUFEXE):	$(OBJS)
-	$(CC) $(LDFLAGS) $(OBJS) -o $@ $(DEBUG)
+override CFLAGS	+= -DSYSV
 
-$(OBJS):
+SRCS = ar.c arsup.c lz1.c o2u.c
+OBJS = $(SRCS:.c=.o)
+DEPS = $(OBJS:.o=.d)
+
+$(BINARY)$(SUFEXE): $(OBJS) $(LIBPATHS)
+	$(CC) -o $@ $(OBJS) $(LDFLAGS) $(DEBUG)
 
 clean:
-	$(RM) $(BINARY) $(BINARY).exe *.o
+	$(RM) *.o *.d os9 os9.exe
 
 install: $(BINARY)
 	cp $(BINARY) $(HOME)/bin
+
+-include $(DEPS)

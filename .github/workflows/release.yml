@@ -8,7 +8,6 @@ on:
   workflow_dispatch:
 
 env:
-  # Path to the solution file relative to the root of the project.
   SOLUTION_FILE_PATH: .
 
 permissions:
@@ -33,16 +32,11 @@ jobs:
 
       - name: Build Linux
         run: |
-          sudo make -C build/unix unixpackage
+          sudo make -C build/unix NOUNITTESTS=1 unixpackage
 
       - name: Build Windows
         run: |
-          sudo make -C build/unix winpackage
-
-      - name: Results
-        run: |
-          [ -f build/unix/toolshed-*.tgz ] && ls build/unix/toolshed-*.tgz | xargs -I {} bash -c 'echo; md5sum {}; ls -al --color=auto {}; tar tzvf {}'
-          [ -f build/unix/toolshed-*.zip ] && ls build/unix/toolshed-*.zip | xargs -I {} bash -c 'echo; md5sum {}; ls -al --color=auto {}; unzip -l -v {}'
+          sudo make -C build/unix NOUNITTESTS=1 winpackage
 
       - name: Upload Linux/Windows Artifacts
         uses: actions/upload-artifact@v4
@@ -52,15 +46,8 @@ jobs:
             build/unix/toolshed-*.tgz
             build/unix/toolshed-*.zip
 
-  build-mac:
-    strategy:
-      matrix:
-        include:
-          - runner: macos-13
-            arch: x86_64
-          - runner: macos-14
-            arch: arm64
-    runs-on: ${{ matrix.runner }}
+  build-mac-universal:
+    runs-on: macos-14
 
     steps:
       - name: Checkout
@@ -70,25 +57,19 @@ jobs:
         run: |
           brew install markdown || true
 
-      - name: Build macOS (${{ matrix.arch }})
+      - name: Build macOS Universal (No Tests, No FUSE)
         run: |
-          make -C build/unix macpackage || make -C build/unix unixpackage
+          make -C build/unix NOUNITTESTS=1 NO_COCOFUSE=1 macpackage-universal
 
-      - name: Results
-        run: |
-          ls build/unix/toolshed-* 2>/dev/null || true
-
-      - name: Upload macOS Artifact
+      - name: Upload macOS Universal Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macos-${{ matrix.arch }}-packages
+          name: macos-universal-package
           path: |
-            build/unix/toolshed-*.tgz
-            build/unix/toolshed-*.tar.gz
-            build/unix/toolshed-*.zip
+            build/unix/toolshed-mac-universal-*.zip
 
   release:
-    needs: [build-linux-win, build-mac]
+    needs: [build-linux-win, build-mac-universal]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

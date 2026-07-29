@@ -6,6 +6,8 @@ vpath %.c ../../mamou:../../os9
 
 PACKAGENAME_UNIX	= toolshed-unix64-$(VERSION).tgz
 PACKAGENAME_WIN		= toolshed-win64-$(VERSION).zip
+PACKAGENAME_MAC_X86	= toolshed-mac-x86_64-$(VERSION).zip
+PACKAGENAME_MAC_ARM	= toolshed-mac-arm64-$(VERSION).zip
 
 prefix      ?= /usr/local
 bindir      ?= $(prefix)/bin
@@ -30,8 +32,8 @@ ifneq ($(WIN),)
 PACKAGENAME	= $(PACKAGENAME_WIN)
 MAKEPACKAGE = zip -9
 else
-PACKAGENAME	= $(PACKAGENAME_UNIX)
-MAKEPACKAGE = tar czvf
+PACKAGENAME	?= $(PACKAGENAME_UNIX)
+MAKEPACKAGE ?= tar czvf
 ifneq ($(NO_COCOFUSE),)
 DIRS		:= $(DIRS) unittest
 else
@@ -60,7 +62,7 @@ cleandirs:
 	$(foreach dir, $(DIRS), (cd $(dir); $(MAKE) clean);)
 	
 clean: cleandirs
-	$(RM) $(PACKAGENAME_WIN) $(PACKAGENAME_UNIX)
+	$(RM) $(PACKAGENAME_WIN) $(PACKAGENAME_UNIX) $(PACKAGENAME_MAC_X86) $(PACKAGENAME_MAC_ARM)
 
 unixpackage:
 	$(MAKE) -f ./Makefile package
@@ -69,6 +71,12 @@ winpackage:
 	$(MAKE) -f ./Makefile cleandirs
 	$(MAKE) -f ./Makefile CC=x86_64-w64-mingw32-gcc WIN=1 package
 
-allpackages: clean unixpackage winpackage 
+macpackage-x86:
+	$(MAKE) -f ./Makefile cleandirs
+	$(MAKE) -f ./Makefile PACKAGENAME=$(PACKAGENAME_MAC_X86) MAKEPACKAGE="zip -9" NO_COCOFUSE=1 package
 
+macpackage-arm:
+	$(MAKE) -f ./Makefile cleandirs
+	$(MAKE) -f ./Makefile PACKAGENAME=$(PACKAGENAME_MAC_ARM) MAKEPACKAGE="zip -9" NO_COCOFUSE=1 package
 
+allpackages: clean unixpackage winpackage macpackage-x86 macpackage-arm

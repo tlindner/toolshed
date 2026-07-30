@@ -32,11 +32,11 @@ jobs:
 
       - name: Build Linux
         run: |
-          sudo make -C build/unix NOUNITTESTS=1 unixpackage
+          sudo make -C build/unix NOUNITTESTS=1 NO_COCOFUSE=1 unixpackage
 
       - name: Build Windows
         run: |
-          sudo make -C build/unix NOUNITTESTS=1 winpackage
+          sudo make -C build/unix NOUNITTESTS=1 NO_COCOFUSE=1 winpackage
 
       - name: Upload Linux/Windows Artifacts
         uses: actions/upload-artifact@v4
@@ -54,6 +54,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Dependencies
+        env:
+          HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
         run: |
           brew install markdown || true
 

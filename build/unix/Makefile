@@ -69,11 +69,11 @@ clean: cleandirs
 	$(RM) $(PACKAGENAME_WIN) $(PACKAGENAME_UNIX) $(PACKAGENAME_MAC_UNIVERSAL)
 
 unixpackage:
-	$(MAKE) -f NO_COCOFUSE=1 NOUNITTESTS=1 ./Makefile package
+	$(MAKE) -f ./Makefile NO_COCOFUSE=1 NOUNITTESTS=1 package
 
 winpackage:
 	$(MAKE) -f ./Makefile cleandirs
-	$(MAKE) -f ./Makefile NO_COCOFUSE=1 NOUNITTESTS=1 CC=x86_64-w64-mingw32-gcc WIN=1 package
+	$(MAKE) -f ./Makefile CC=x86_64-w64-mingw32-gcc WIN=1 NO_COCOFUSE=1 NOUNITTESTS=1 package
 
 # Exclude cocofuse and unittest binaries from packaging loops
 RELEASE_APPS = $(filter-out cocofuse/cocofuse cocofuse unittest/unittest unittest,$(APPS))

@@ -33,17 +33,16 @@ MAKEPACKAGE = zip -9
 else
 PACKAGENAME	?= $(PACKAGENAME_UNIX)
 MAKEPACKAGE ?= tar czvf
+endif
 
+# Move these outside so they apply when WIN=1 as well
 ifneq ($(NOUNITTESTS),)
     DIRS := $(filter-out unittest,$(DIRS))
 endif
 
-# Filter out cocofuse if NO_COCOFUSE is passed (e.g., NO_COCOFUSE=1)
 ifneq ($(NO_COCOFUSE),)
     DIRS := $(filter-out cocofuse,$(DIRS))
     APPS := $(filter-out cocofuse/cocofuse cocofuse,$(APPS))
-endif
-
 endif
 
 APPS		:= $(foreach item,$(APPS),$(item)/$(item)$(SUFEXE))

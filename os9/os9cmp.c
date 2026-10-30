@@ -31,6 +31,7 @@ static char const *const helpMessage[] = {
 int os9cmp(int argc, char **argv)
 {
 	error_code ec = 0;
+	error_code cmp_ec;
 	char *p = NULL;
 	int i;
 	char *file1 = NULL, *file2 = NULL;
@@ -83,7 +84,11 @@ int os9cmp(int argc, char **argv)
 			else
 			{
 				file2 = argv[i];
-				do_cmp(argv, file1, file2);
+				cmp_ec = do_cmp(argv, file1, file2);
+				if (ec == 0)
+				{
+					ec = cmp_ec;
+				}
 				file1 = NULL;
 			}
 		}
@@ -118,6 +123,7 @@ static int do_cmp(char **argv, char *file1, char *file2)
 	if (ec != 0)
 	{
 		fprintf(stderr, "%s: cannot open file\n", argv[0]);
+		_coco_close(path1);
 		return (ec);
 	}
 

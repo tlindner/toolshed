@@ -218,12 +218,130 @@ void test_os9_command_copy_exit_status()
 	remove("copy_status.dsk");
 }
 
+void test_os9_command_cmp_exit_status()
+{
+	FILE *file;
+	int status;
+	int i;
+	const char *commands[] = {
+		"../os9/os9 cmp cmp_source cmp_source > /dev/null 2>&1",
+		"../os9/os9 cmp cmp_missing cmp_source > /dev/null 2>&1",
+		"../os9/os9 cmp cmp_source cmp_missing > /dev/null 2>&1",
+		"../os9/os9 cmp cmp_missing cmp_source cmp_source cmp_source > /dev/null 2>&1"
+	};
+	const int expected[] = {0, EOS_PNNF, EOS_PNNF, EOS_PNNF};
+
+	remove("cmp_missing");
+	file = fopen("cmp_source", "wb");
+	ASSERT("create comparison source", file != NULL);
+	status = fputs("comparison regression\n", file);
+	ASSERT_NEQUALS(EOF, status);
+	status = fclose(file);
+	ASSERT_EQUALS(0, status);
+
+	for (i = 0; i < 4; i++)
+	{
+		status = system(commands[i]);
+		ASSERT_EQUALS(1, WIFEXITED(status));
+		ASSERT_EQUALS(expected[i], WEXITSTATUS(status));
+	}
+
+	remove("cmp_source");
+}
+
+void test_os9_command_list_long_line()
+{
+	error_code ec;
+	os9_path_id path;
+	FILE *file;
+	char contents[1104];
+	char expected[1104];
+	char result[1106];
+	u_int size = sizeof(contents);
+	size_t count;
+
+	memset(contents, 'A', 1100);
+	memcpy(contents + 1100, "\rB\rC", 4);
+	memcpy(expected, contents, sizeof(contents));
+	expected[1100] = '\n';
+	expected[1102] = '\n';
+	ec = system("../os9/os9 format -e list_long.dsk -l630 > /dev/null 2>&1");
+	ASSERT_EQUALS(0, ec);
+	ec = _os9_create(&path, "list_long.dsk,text", FAM_WRITE,
+	                 FAP_READ | FAP_WRITE);
+	ASSERT_EQUALS(0, ec);
+	ec = _os9_write(path, contents, &size);
+	ASSERT_EQUALS(0, ec);
+	ASSERT_EQUALS(sizeof(contents), size);
+	ec = _os9_close(path);
+	ASSERT_EQUALS(0, ec);
+
+	ec = system("../os9/os9 list list_long.dsk,text > list_long.out");
+	ASSERT_EQUALS(0, ec);
+	file = fopen("list_long.out", "rb");
+	ASSERT("open listing output", file != NULL);
+	count = fread(result, 1, sizeof(result), file);
+	ec = fclose(file);
+	ASSERT_EQUALS(0, ec);
+	/* The final unterminated line also receives a native newline. */
+	ASSERT_EQUALS(sizeof(expected) + 1, count);
+	ASSERT_MEM_EQUALS(expected, result, sizeof(expected));
+	ASSERT_EQUALS('\n', result[1104]);
+
+	remove("list_long.out");
+	remove("list_long.dsk");
+}
+
+void test_os9_command_list_multiple_files()
+{
+	error_code ec;
+	os9_path_id path;
+	FILE *file;
+	char *names[] = {"list_multi.dsk,one", "list_multi.dsk,two"};
+	const char *contents[] = {"first\r", "second\r"};
+	const char expected[] = "first\nsecond\n";
+	char result[sizeof(expected)];
+	size_t count;
+	u_int size;
+	int i;
+
+	ec = system("../os9/os9 format -e list_multi.dsk -l630 > /dev/null 2>&1");
+	ASSERT_EQUALS(0, ec);
+	for (i = 0; i < 2; i++)
+	{
+		ec = _os9_create(&path, names[i], FAM_WRITE, FAP_READ | FAP_WRITE);
+		ASSERT_EQUALS(0, ec);
+		size = strlen(contents[i]);
+		ec = _os9_write(path, (void *) contents[i], &size);
+		ASSERT_EQUALS(0, ec);
+		ASSERT_EQUALS(strlen(contents[i]), size);
+		ec = _os9_close(path);
+		ASSERT_EQUALS(0, ec);
+	}
+
+	ec = system("../os9/os9 list list_multi.dsk,one list_multi.dsk,two > list_multi.out");
+	ASSERT_EQUALS(0, ec);
+	file = fopen("list_multi.out", "rb");
+	ASSERT("open multi-file listing", file != NULL);
+	count = fread(result, 1, sizeof(result), file);
+	ec = fclose(file);
+	ASSERT_EQUALS(0, ec);
+	ASSERT_EQUALS(sizeof(expected) - 1, count);
+	ASSERT_MEM_EQUALS(expected, result, count);
+
+	remove("list_multi.out");
+	remove("list_multi.dsk");
+}
+
 int main()
 {
 	remove("test.dsk");
 	RUN(test_os9_command_format);
 	RUN(test_os9_command_copy_metadata);
 	RUN(test_os9_command_copy_exit_status);
+	RUN(test_os9_command_cmp_exit_status);
+	RUN(test_os9_command_list_long_line);
+	RUN(test_os9_command_list_multiple_files);
 
 	return TEST_REPORT();
 }

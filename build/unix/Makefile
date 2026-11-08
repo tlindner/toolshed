@@ -40,10 +40,24 @@ APPS		:= $(APPS) cocofuse
 endif
 endif
 
+LIBDIRS		= $(filter lib%,$(DIRS))
+APPDIRS		= $(filter-out $(LIBDIRS) doc unittest,$(DIRS))
+CLEANDIRS	= $(addprefix clean-,$(DIRS))
+
 APPS		:= $(foreach item,$(APPS),$(item)/$(item)$(SUFEXE))
 
-all:
-	$(foreach dir, $(DIRS), (cd $(dir) && $(MAKE)) &&) true
+.PHONY: all $(DIRS) install package cleandirs $(CLEANDIRS) clean \
+	unixpackage winpackage allpackages
+
+all: $(DIRS)
+
+# Recursive makes share the jobserver.  Libraries must be ready before
+# linking applications, and command tests need the applications built first.
+$(APPDIRS): $(LIBDIRS)
+unittest: $(LIBDIRS) $(APPDIRS)
+
+$(DIRS):
+	$(MAKE) -C $@
 
 install: all
 	$(INSTALL) -d $(INSTALLDIR) $(DOCDIR)
@@ -56,8 +70,10 @@ package: install
 	$(MAKEPACKAGE) $(PACKAGENAME) toolshed-$(VERSION)/*
 	rm -rf toolshed-$(VERSION)
 
-cleandirs:
-	$(foreach dir, $(DIRS), (cd $(dir) && $(MAKE) clean) &&) true
+cleandirs: $(CLEANDIRS)
+
+$(CLEANDIRS):
+	$(MAKE) -C $(patsubst clean-%,%,$@) clean
 	
 clean: cleandirs
 	$(RM) $(PACKAGENAME_WIN) $(PACKAGENAME_UNIX)
@@ -69,6 +85,10 @@ winpackage:
 	$(MAKE) -f ./Makefile cleandirs
 	$(MAKE) -f ./Makefile CC=x86_64-w64-mingw32-gcc WIN=1 package
 
-allpackages: clean unixpackage winpackage 
+# Both packages use the same build tree, so do not run them concurrently.
+allpackages:
+	$(MAKE) clean
+	$(MAKE) unixpackage
+	$(MAKE) winpackage
 
 
